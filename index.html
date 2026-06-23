@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+  <div id="homeScreen">
+
+  <div class="headerRow">
+  <div class="app-title">etsuran</div>
+
+  <button
+    type="button"
+    class="kakeiboLinkButton"
+    onclick="openKakeibo()">
+    ✏️ kakeibo
+  </button>
+</div>
+  
+  <div class="tabs">
+    <div class="tab" data-person="共通" onclick="changePerson('共通', this)">共通</div>
+    <div class="tab" data-person="くる" onclick="changePerson('くる', this)">くる</div>
+    <div class="tab" data-person="ぐんま" onclick="changePerson('ぐんま', this)">ぐん</div>
+    <div class="tab" data-person="合計" onclick="changePerson('合計', this)">合計</div>
+  </div>
+
+  <div class="month-switcher">
+  <button class="month-button" id="prevMonthButton" onclick="changeMonth(-1)">‹</button>
+  <div class="month" id="monthLabel">----</div>
+  <button class="month-button" id="nextMonthButton" onclick="changeMonth(1)">›</button>
+</div>
+
+  <div class="hero">
+    <div class="label">🌱 今月の日常費</div>
+
+    <div class="budget-row">
+  <div class="budget-item">
+    <div class="budget-caption">支出</div>
+    <div class="budget-value" id="dailyTotal">読み込み中...</div>
+  </div>
+  <div class="budget-item">
+    <div class="budget-caption" id="monthRemainingLabel">残り予算</div>
+    <div class="budget-value-small" id="monthBudgetRemaining">読み込み中...</div>
+  </div>
+</div>
+
+    <div class="sub" id="monthBudgetText">月予算 読み込み中...</div>
+
+    <div class="bar-line">
+      <div class="bar-bg">
+        <div class="bar" id="monthBudgetBar"></div>
+      </div>
+      <div class="rate-text" id="monthBudgetRate">--%消化</div>
+    </div>
+
+    <div class="status" id="budgetStatus">読み込み中...</div>
+  </div>
+
+  <div class="mini-grid">
+      <div class="mini-card special-card" onclick="toggleSpecialMode()">
+      <div class="label" id="specialCardTitle">🎒 今年の特別費</div>
+      <div class="sub" id="yearRemainingLabel">残り予算</div>
+      <div class="mini-value" id="yearBudgetRemaining">読み込み中...</div>
+
+      <div class="sub" id="specialYearTotal">支出 読み込み中...</div>
+
+      <div class="bar-bg" style="margin-top:10px;">
+        <div class="bar" id="yearBudgetBar"></div>
+      </div>
+      <div class="sub" id="yearBudgetRate">--%消化</div>
+    </div>
+
+    <div class="mini-card total-card" onclick="openExpenseList()">
+      <div class="label">💰 今月の支出</div>
+      <div class="mini-value" id="allTotal">読み込み中...</div>
+      <div class="breakdown" id="monthlyBreakdown">読み込み中...</div>
+    </div>
+  </div>
+
+  <div class="menu-title">miru</div>
+
+  <div class="menu">
+
+  <div class="menu-item" onclick="showCalendarScreen()">
+  <div class="menu-icon">📅</div>
+  <div class="menu-text">カレンダー</div>
+</div>
+
+  <div class="menu-item" onclick="showTrendScreen()">
+  <div class="menu-icon">📈</div>
+  <div class="menu-text">月別推移</div>
+</div>
+
+  <div class="menu-item" onclick="showBalanceScreen()">
+  <div class="menu-icon">💴</div>
+  <div class="menu-text">収支</div>
+</div>
+
+  <div class="menu-item" onclick="showRankingScreen()">
+  <div class="menu-icon">🏆</div>
+  <div class="menu-text">ランキング</div>
+</div>
+
+  <div class="menu-item" onclick="showAssetScreen()">
+  <div class="menu-icon">🏦</div>
+  <div class="menu-text">財産目録</div>
+</div>
+
+  <div class="menu-item menu-item-disabled">
+  <div class="menu-icon">🎯</div>
+  <div class="menu-text">予算</div>
+</div>
+
+</div>
+
+</div>
+
+<div id="trendScreen" class="screen hidden">
+
+  <div class="trend-header-row">
+    <button class="back-button" onclick="showHomeScreen()">← ホーム</button>
+    <div class="screen-title trend-page-title">月別推移</div>
+  </div>
+
+<div class="tabs trend-tabs">
+  <div class="trend-tab" data-trend-person="共通" onclick="changeTrendPerson('共通', this)">共通</div>
+  <div class="trend-tab" data-trend-person="くる" onclick="changeTrendPerson('くる', this)">くる</div>
+  <div class="trend-tab" data-trend-person="ぐんま" onclick="changeTrendPerson('ぐんま', this)">ぐん</div>
+  <div class="trend-tab" data-trend-person="合計" onclick="changeTrendPerson('合計', this)">合計</div>
+</div>
+
+<div class="filter-condition-card">
+
+<div
+  id="trendConditionCard"
+  class="condition-summary-card"
+  onclick="openTrendCategorySheet()">
+
+  <div class="condition-summary-label">カテゴリ</div>
+
+  <div class="condition-summary-main">
+    <span id="trendCategoryFilterButton">すべて</span>
+    <span class="condition-card-arrow">▶</span>
+  </div>
+
+</div>
+</div>
+
+<div class="placeholder-card" id="trendChartCard">
+  読み込み中...
+</div>
+
+</div>
+
+<div id="balanceScreen" class="screen hidden">
+
+  <div class="trend-header-row">
+    <button class="back-button" onclick="showHomeScreen()">← ホーム</button>
+    <div class="screen-title trend-page-title">収支</div>
+  </div>
+
+  <div class="tabs balance-tabs">
+  <div class="trend-tab" data-balance-person="共通" onclick="changeBalancePerson('共通', this)">共通</div>
+  <div class="trend-tab" data-balance-person="くる" onclick="changeBalancePerson('くる', this)">くる</div>
+  <div class="trend-tab" data-balance-person="ぐんま" onclick="changeBalancePerson('ぐんま', this)">ぐん</div>
+  <div class="trend-tab" data-balance-person="合計" onclick="changeBalancePerson('合計', this)">合計</div>
+</div>
+
+  <div class="placeholder-card balance-summary-card" id="balanceSummaryCard">
+  読み込み中...
+</div>
+
+  <div class="placeholder-card balance-table-card" id="balanceMonthlyTable" style="margin-top:12px;">
+  読み込み中...
+</div>
+
+</div>
+
+<div id="rankingScreen" class="screen hidden">
+
+  <div class="trend-header-row">
+    <button class="back-button" onclick="showHomeScreen()">← ホーム</button>
+    <div class="screen-title trend-page-title">ランキング</div>
+  </div>
+
+  <div class="tabs ranking-tabs">
+    <div class="trend-tab" data-ranking-person="共通" onclick="changeRankingPerson('共通', this)">共通</div>
+    <div class="trend-tab" data-ranking-person="くる" onclick="changeRankingPerson('くる', this)">くる</div>
+    <div class="trend-tab" data-ranking-person="ぐんま" onclick="changeRankingPerson('ぐんま', this)">ぐん</div>
+    <div class="trend-tab" data-ranking-person="合計" onclick="changeRankingPerson('合計', this)">合計</div>
+  </div>
+
+  <div
+    id="rankingConditionCard"
+    class="condition-summary-card"
+    onclick="openRankingConditionSheet()">
+
+    <div class="condition-summary-label">カテゴリ・期間</div>
+
+    <div class="condition-summary-main">
+      <span id="rankingConditionText">日常費＋特別費 ｜ 今月</span>
+      <span class="condition-card-arrow">▶</span>
+    </div>
+
+  </div>
+
+  <div id="rankingTop3"></div>
+
+  <div class="placeholder-card" id="rankingList" style="margin-top:12px;">
+    4位以降
+  </div>
+
+</div>
+
+<div id="calendarScreen" class="screen hidden">
+
+  <div class="trend-header-row">
+    <button class="back-button" onclick="showHomeScreen()">← ホーム</button>
+    <div class="screen-title trend-page-title">支出カレンダー</div>
+  </div>
+
+  <div class="tabs calendar-tabs">
+    <div class="trend-tab" data-calendar-person="共通" onclick="changeCalendarPerson('共通', this)">共通</div>
+    <div class="trend-tab" data-calendar-person="くる" onclick="changeCalendarPerson('くる', this)">くる</div>
+    <div class="trend-tab" data-calendar-person="ぐんま" onclick="changeCalendarPerson('ぐんま', this)">ぐん</div>
+    <div class="trend-tab" data-calendar-person="合計" onclick="changeCalendarPerson('合計', this)">合計</div>
+  </div>
+
+  <div class="month-switcher">
+    <button class="month-button" onclick="changeCalendarMonth(-1)">‹</button>
+    <div class="month" id="calendarMonthLabel">----</div>
+    <button class="month-button" onclick="changeCalendarMonth(1)">›</button>
+  </div>
+
+<div class="filter-condition-card">
+
+  <div
+    id="calendarConditionCard"
+    class="condition-summary-card"
+    onclick="openCalendarCategorySheet()">
+
+    <div class="condition-summary-label">カテゴリ</div>
+
+    <div class="condition-summary-main">
+      <span id="calendarCategoryFilterButton">日常費＋特別費</span>
+      <span class="condition-card-arrow">▶</span>
+    </div>
+
+  </div>
+
+</div>
+
+  <div class="placeholder-card" id="calendarContainer">
+    カレンダー準備中...
+  </div>
+
+</div>
+
+<div id="assetScreen" class="screen hidden">
+
+  <div class="trend-header-row">
+    <button class="back-button" onclick="showHomeScreen()">← ホーム</button>
+    <div class="screen-title trend-page-title">財産目録</div>
+  </div>
+
+  <div class="tabs asset-tabs">
+    <div class="trend-tab" data-asset-person="共通" onclick="changeAssetPerson('共通', this)">共通</div>
+    <div class="trend-tab" data-asset-person="くる" onclick="changeAssetPerson('くる', this)">くる</div>
+    <div class="trend-tab" data-asset-person="ぐんま" onclick="changeAssetPerson('ぐんま', this)">ぐん</div>
+    <div class="trend-tab" data-asset-person="合計" onclick="changeAssetPerson('合計', this)">合計</div>
+  </div>
+
+  <div id="assetSummaryCard" class="asset-summary-card">
+    読み込み中...
+  </div>
+
+  <!--
+  <div class="section-title">明細</div>
+  <div id="assetDetailCard" class="asset-card">
+    読み込み中...
+  </div>
+-->
+
+</div>
+
+<div class="sheet-modal" id="periodModal">
+  <div class="sheet-panel period-panel">
+
+    <div class="sheet-header">
+      <div class="sheet-title">期間指定</div>
+      <button class="sheet-close" onclick="closePeriodSheet()">×</button>
+    </div>
+
+    <div class="period-field">
+      <label class="period-label">開始日</label>
+      <input type="date" id="periodStartDate" class="period-input" onchange="focusPeriodEndDate()">
+    </div>
+
+    <div class="period-field">
+      <label class="period-label">終了日</label>
+      <input type="date" id="periodEndDate" class="period-input">
+    </div>
+
+    <div class="period-actions">
+      <button class="period-cancel-button" onclick="closePeriodSheet()">キャンセル</button>
+      <button class="period-apply-button" onclick="applyPeriodSheet()">適用</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="sheet-modal" id="categoryModal">
+  <div class="sheet-panel category-panel">
+
+    <div class="sheet-header">
+      <div class="sheet-title hidden"></div>
+      <button class="sheet-close" onclick="closeCategorySheet()">×</button>
+    </div>
+
+    <div id="categorySheetContent">
+      読み込み中...
+    </div>
+
+  </div>
+</div>
+
+<div class="sheet-modal" id="expenseModal">
+    <div class="sheet-panel">
+      <div class="sheet-header">
+        <div class="sheet-title"></div>
+        <button class="sheet-close" onclick="closeExpenseList()">×</button>
+      </div>
+      <div id="expenseListContent">読み込み中...</div>
+    </div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>
