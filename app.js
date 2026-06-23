@@ -76,7 +76,7 @@ function callApi(action, params = {}) {
 
 function openKakeibo(){
   window.location.href =
-    "https://script.google.com/macros/s/AKfycbznQczpMtZjBLNlPV8mbfvwX7yDL54bIYx5ReavT9dDjVQGo0x00nzrqhf5o3GN61ZITQ/exec",
+    "https://script.google.com/macros/s/AKfycbxeMor57OdXyu96EhZLmlIttYje5BwxW-OwC7Jm_5zUVyOW9EdwTsI8VNizWZvwMb0UFA/exec",
     "kakeibo"
 }
 
