@@ -370,6 +370,9 @@ let selectedCalendarDay = null;
 let currentAssetPerson = '共通';
 let assetDataCache = {};
 
+let selectedBudgetPerson = '共通';
+let budgetDataCache = null;
+
 function getAllCategoriesFromMaster(master) {
   let categories = [];
 
@@ -829,6 +832,7 @@ function initializePerson() {
 function hideAllScreens() {
   const screenIds = [
     'homeScreen',
+    'budgetScreen',
     'trendScreen',
     'balanceScreen',
     'rankingScreen',
@@ -843,6 +847,190 @@ function hideAllScreens() {
       screen.classList.add('hidden');
     }
   });
+}
+
+function updateBudgetMonthLabel() {
+  const label = document.getElementById('budgetMonthLabel');
+  if (!label) return;
+
+  label.textContent = selectedYear + '年' + (selectedMonth + 1) + '月';
+}
+
+function changeBudgetMonth(diff) {
+  let newYear = selectedYear;
+  let newMonth = selectedMonth + diff;
+
+  if (newMonth < 0) {
+    newMonth = 11;
+    newYear--;
+  }
+
+  if (newMonth > 11) {
+    newMonth = 0;
+    newYear++;
+  }
+
+  selectedYear = newYear;
+  selectedMonth = newMonth;
+
+  updateBudgetMonthLabel();
+  loadBudgetData();
+}
+
+function getBudgetSelectionData(data) {
+  if (!data) return null;
+
+  if (selectedBudgetPerson === 'すべて') {
+    return data.all || null;
+  }
+
+  if (data.persons && data.persons[selectedBudgetPerson]) {
+    return data.persons[selectedBudgetPerson];
+  }
+
+  return null;
+}
+
+function renderBudgetScreen() {
+  const card = document.getElementById('budgetCard');
+  const button = document.getElementById('budgetActionButton');
+
+  if (!card || !button) return;
+
+  if (!budgetDataCache) {
+    card.textContent = '読み込み中...';
+    button.textContent = '予算を作成';
+    return;
+  }
+
+  const item = getBudgetSelectionData(budgetDataCache);
+
+  if (!item) {
+    card.innerHTML = '<div class="budget-card-empty">データがありません</div>';
+    button.textContent = '予算を作成';
+    return;
+  }
+
+  const isCreated = item.calculated === true;
+  const statusText = item.statusText || (isCreated ? '作成済み' : '未作成');
+  const messageText = item.message || '';
+  const basicBudget = item.baseMonthBudget ?? null;
+  const carryover = item.carryover ?? null;
+  const currentBudget = item.monthBudget ?? null;
+  const source = item.sourceText ?? null;
+
+  button.textContent = item.buttonText || (isCreated ? '再計算' : '予算を作成');
+
+  if (selectedBudgetPerson === 'すべて') {
+    const allStatusRows = [
+      '<div class="budget-card-row"><span class="budget-card-label">共通</span><span class="budget-card-value">' + ((budgetDataCache.persons && budgetDataCache.persons.共通 && budgetDataCache.persons.共通.statusText) ? budgetDataCache.persons.共通.statusText : '—') + '</span></div>',
+      '<div class="budget-card-row"><span class="budget-card-label">くる</span><span class="budget-card-value">' + ((budgetDataCache.persons && budgetDataCache.persons.くる && budgetDataCache.persons.くる.statusText) ? budgetDataCache.persons.くる.statusText : '—') + '</span></div>',
+      '<div class="budget-card-row"><span class="budget-card-label">ぐんま</span><span class="budget-card-value">' + ((budgetDataCache.persons && budgetDataCache.persons.ぐんま && budgetDataCache.persons.ぐんま.statusText) ? budgetDataCache.persons.ぐんま.statusText : '—') + '</span></div>'
+    ].join('');
+
+    card.innerHTML =
+      '<div class="budget-card-title">' + selectedBudgetPerson + 'の予算</div>' +
+      '<div class="budget-card-status ' + (isCreated ? '' : 'uncreated') + '">' + statusText + '</div>' +
+      allStatusRows;
+    return;
+  }
+
+  const displayCarryover = (isCreated || (carryover !== null && carryover !== undefined && carryover !== '')) ? (carryover === null || carryover === undefined || carryover === '' ? '—' : formatSignedMoney(carryover)) : '—';
+  const displayCurrentBudget = (isCreated || (currentBudget !== null && currentBudget !== undefined && currentBudget !== '')) ? (currentBudget === null || currentBudget === undefined || currentBudget === '' ? '—' : formatMoney(currentBudget)) : '—';
+  const displaySource = (isCreated || (source !== null && source !== undefined && source !== '')) ? (source === null || source === undefined || source === '' ? '—' : source) : '—';
+
+  card.innerHTML =
+    '<div class="budget-card-title">' + selectedBudgetPerson + 'の予算</div>' +
+    '<div class="budget-card-status ' + (isCreated ? '' : 'uncreated') + '">' + statusText + '</div>' +
+    '<div class="budget-card-row"><span class="budget-card-label">メッセージ</span><span class="budget-card-value">' + (messageText === null || messageText === undefined || messageText === '' ? '—' : messageText) + '</span></div>' +
+    '<div class="budget-card-row"><span class="budget-card-label">基本月予算</span><span class="budget-card-value">' + (basicBudget === null || basicBudget === undefined || basicBudget === '' ? '—' : formatMoney(basicBudget)) + '</span></div>' +
+    '<div class="budget-card-row"><span class="budget-card-label">前月までの繰越</span><span class="budget-card-value">' + displayCarryover + '</span></div>' +
+    '<div class="budget-card-row"><span class="budget-card-label">今月予算</span><span class="budget-card-value">' + displayCurrentBudget + '</span></div>' +
+    '<div class="budget-card-row"><span class="budget-card-label">計算元</span><span class="budget-card-value">' + displaySource + '</span></div>';
+}
+
+function setBudgetPersonTab(person) {
+  document.querySelectorAll('[data-budget-person]').forEach(function(tab) {
+    tab.classList.remove('active');
+
+    if (tab.dataset.budgetPerson === person) {
+      tab.classList.add('active');
+    }
+  });
+}
+
+function changeBudgetPerson(person, element) {
+  selectedBudgetPerson = person;
+
+  document.querySelectorAll('[data-budget-person]').forEach(function(tab) {
+    tab.classList.remove('active');
+  });
+
+  element.classList.add('active');
+
+  renderBudgetScreen();
+}
+
+function loadBudgetData() {
+  updateBudgetMonthLabel();
+
+  const card = document.getElementById('budgetCard');
+  const button = document.getElementById('budgetActionButton');
+
+  if (card) {
+    card.textContent = '読み込み中...';
+  }
+
+  if (button) {
+    button.textContent = '予算を作成';
+  }
+
+  callApi('getBudgetData', {
+    targetYear: selectedYear,
+    targetMonth: selectedMonth
+  })
+    .then(function(data) {
+      budgetDataCache = data;
+      renderBudgetScreen();
+    })
+    .catch(function(error) {
+      if (card) {
+        card.textContent = 'エラー: ' + error.message;
+      }
+    });
+}
+
+function handleBudgetAction() {
+  const params = {
+    targetYear: selectedYear,
+    targetMonth: selectedMonth,
+    selectedPerson: selectedBudgetPerson
+  };
+
+  callApi('upsertMonthlyBudget', params)
+    .then(function() {
+      loadAllHomeData(currentPerson || '共通');
+      loadBudgetData();
+    })
+    .catch(function(error) {
+      const card = document.getElementById('budgetCard');
+      if (card) {
+        card.textContent = 'エラー: ' + error.message;
+      }
+    });
+}
+
+function showBudgetScreen() {
+  hideAllScreens();
+
+  document.getElementById('budgetScreen').classList.remove('hidden');
+
+  if (!selectedBudgetPerson) {
+    selectedBudgetPerson = '共通';
+  }
+
+  setBudgetPersonTab(selectedBudgetPerson);
+  loadBudgetData();
 }
 
 function showTrendScreen() {
