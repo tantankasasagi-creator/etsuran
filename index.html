@@ -90,6 +90,11 @@
   <div class="menu-text">カレンダー</div>
 </div>
 
+  <div class="menu-item" onclick="showBudgetScreen()">
+  <div class="menu-icon">🧾</div>
+  <div class="menu-text">予算</div>
+</div>
+
   <div class="menu-item" onclick="showTrendScreen()">
   <div class="menu-icon">📈</div>
   <div class="menu-text">月別推移</div>
@@ -110,12 +115,37 @@
   <div class="menu-text">財産目録</div>
 </div>
 
-  <div class="menu-item menu-item-disabled">
-  <div class="menu-icon">🎯</div>
-  <div class="menu-text">予算</div>
 </div>
 
 </div>
+
+<div id="budgetScreen" class="screen hidden">
+
+  <div class="trend-header-row">
+    <button class="back-button" onclick="showHomeScreen()">← ホーム</button>
+    <div class="screen-title trend-page-title">予算</div>
+  </div>
+
+  <div class="tabs budget-tabs">
+    <div class="trend-tab" data-budget-person="共通" onclick="changeBudgetPerson('共通', this)">共通</div>
+    <div class="trend-tab" data-budget-person="くる" onclick="changeBudgetPerson('くる', this)">くる</div>
+    <div class="trend-tab" data-budget-person="ぐんま" onclick="changeBudgetPerson('ぐんま', this)">ぐん</div>
+    <div class="trend-tab" data-budget-person="すべて" onclick="changeBudgetPerson('すべて', this)">すべて</div>
+  </div>
+
+  <div class="month-switcher">
+    <button class="month-button" id="budgetPrevMonthButton" onclick="changeBudgetMonth(-1)">‹</button>
+    <div class="month" id="budgetMonthLabel">----</div>
+    <button class="month-button" id="budgetNextMonthButton" onclick="changeBudgetMonth(1)">›</button>
+  </div>
+
+  <div class="placeholder-card budget-card" id="budgetCard">
+    読み込み中...
+  </div>
+
+  <div class="budget-action-area">
+    <button class="budget-action-button" id="budgetActionButton" onclick="handleBudgetAction()">予算を作成</button>
+  </div>
 
 </div>
 
