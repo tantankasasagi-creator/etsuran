@@ -195,7 +195,7 @@ document.getElementById('nextMonthButton').disabled = true;
       document.getElementById('monthRemainingLabel').textContent = '残り予算';
       document.getElementById('monthBudgetRemaining').textContent = '読み込み中...';
       document.getElementById('dailyTotal').textContent = '読み込み中...';
-      document.getElementById('monthBudgetText').textContent = '月予算 読み込み中...';
+      document.getElementById('monthBudgetText').textContent = '今月予算 読み込み中...';
       document.getElementById('monthBudgetRate').textContent = '--%消化';
       document.getElementById('budgetStatus').textContent = '読み込み中...';
 
@@ -213,6 +213,31 @@ document.getElementById('nextMonthButton').disabled = true;
     }
 
     function renderHomeData(data) {
+      // monthBudgetCalculatedがfalseの場合
+      if (data.monthBudgetCalculated === false) {
+        document.getElementById('monthRemainingLabel').textContent = '残り予算';
+        document.getElementById('monthBudgetRemaining').textContent = '—';
+        document.getElementById('dailyTotal').textContent =
+          formatMoney(data.dailyTotal);
+        document.getElementById('monthBudgetText').textContent = '今月予算 未計算';
+        document.getElementById('monthBudgetRate').textContent = '--%消化';
+        setHeroStatus('');
+        setStatus('予算メニューで予算を作成してください');
+        setBar('monthBudgetBar', 0, '');
+
+        renderSpecialCard(data);
+
+        document.getElementById('allTotal').textContent =
+          formatMoney(data.allTotal);
+
+        document.getElementById('monthlyBreakdown').innerHTML =
+    '<div class="breakdown-row"><span>固定費</span><span>' + formatMoney(data.fixedMonthTotal) + '</span></div>' +
+    '<div class="breakdown-row"><span>日常費</span><span>' + formatMoney(data.monthlyMonthTotal) + '</span></div>' +
+    '<div class="breakdown-row"><span>特別費</span><span>' + formatMoney(data.specialMonthTotal) + '</span></div>';
+        return;
+      }
+
+      // monthBudgetCalculatedがtrue（またはそれ以外）の場合
       if (Number(data.monthBudgetRemaining) < 0) {
         document.getElementById('monthRemainingLabel').textContent = '予算オーバー';
       } else {
@@ -226,7 +251,7 @@ document.getElementById('nextMonthButton').disabled = true;
         formatMoney(data.dailyTotal);
 
       document.getElementById('monthBudgetText').textContent =
-        '月予算 ' + formatMoney(data.monthBudget);
+        '今月予算 ' + formatMoney(data.monthBudget);
 
       document.getElementById('monthBudgetRate').textContent =
         data.monthBudgetRate + '%消化';
