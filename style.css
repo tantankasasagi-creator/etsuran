@@ -518,6 +518,84 @@ align-items: center;
   min-height: 280px;
 }
 
+.budget-tabs {
+  margin-bottom: 14px;
+}
+
+.budget-card {
+  min-height: auto;
+  text-align: left;
+  padding: 20px 18px;
+}
+
+.budget-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2f3437;
+  margin-bottom: 10px;
+}
+
+.budget-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  font-size: 14px;
+  color: #5f6f62;
+}
+
+.budget-card-row:last-child {
+  border-bottom: none;
+}
+
+.budget-card-label {
+  font-weight: 600;
+}
+
+.budget-card-value {
+  font-weight: 700;
+  color: #2f3437;
+  text-align: right;
+}
+
+.budget-card-status {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(95, 143, 106, 0.12);
+  color: #5f8f6a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.budget-card-status.uncreated {
+  background: rgba(123, 133, 128, 0.14);
+  color: #7b8580;
+}
+
+.budget-action-area {
+  margin-top: 14px;
+}
+
+.budget-action-button {
+  width: 100%;
+  border: none;
+  border-radius: 16px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  background: #5f8f6a;
+  color: white;
+  box-shadow: 0 1px 6px rgba(80, 90, 70, 0.08);
+}
+
+.budget-card-empty {
+  color: #7b8580;
+  font-size: 14px;
+}
+
 .trend-tabs {
   margin-bottom: 14px;
 }
