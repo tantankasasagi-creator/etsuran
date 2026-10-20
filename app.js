@@ -50,24 +50,199 @@ function getMonthlyExpenseListApi(
   });
 }
 
-function callApi(action, params = {}) {
-  return fetch(API_URL, {
+// Cache stays in memory: financial data is never persisted to browser storage.
+const apiReadCache = new Map();
+const apiPendingReads = new Map();
+const API_CACHE_TTL = 60 * 1000;
+let apiCacheGeneration = 0;
+let activeApiRequests = 0;
+let latestApiError = '';
+let lastApiUpdate = null;
+
+function updateConnectionStatus() {
+  const status = document.getElementById('connectionStatus');
+  const button = document.getElementById('refreshDataButton');
+  if (!status) return;
+  status.classList.toggle('is-loading', activeApiRequests > 0);
+  status.classList.toggle('is-error', activeApiRequests === 0 && !!latestApiError);
+  status.textContent = activeApiRequests > 0
+    ? 'データを読み込み中…'
+    : latestApiError || (lastApiUpdate
+      ? '更新 ' + lastApiUpdate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+      : '');
+  if (button) button.disabled = activeApiRequests > 0 || budgetSavePending;
+}
+
+function refreshVisibleData() {
+  if (activeApiRequests > 0 || budgetSavePending) return;
+  invalidateApiCache();
+  latestApiError = '';
+  const visible = id => !document.getElementById(id).classList.contains('hidden');
+  if (visible('homeScreen')) loadAllHomeData(currentPerson);
+  else if (visible('budgetScreen')) loadBudgetData();
+  else if (visible('calendarScreen')) loadCalendarData();
+  else if (visible('assetScreen')) loadAssetData();
+  else {
+    const views = [
+      ['trendScreen', getMonthlyTrendDataApi, data => { trendDataCache = data; renderTrendChart(); }],
+      ['rankingScreen', getRankingDataApi, data => { rankingDataCache = data; renderRankingScreen(); }],
+      ['balanceScreen', getBalanceDataApi, data => { balanceDataCache = data; renderBalanceScreen(); }]
+    ];
+    const view = views.find(entry => visible(entry[0]));
+    if (view) {
+      const targetId = { trendScreen: 'trendChartCard', rankingScreen: 'rankingList', balanceScreen: 'balanceSummaryCard' }[view[0]];
+      const target = document.getElementById(targetId);
+      showLoadingState(target, true);
+      view[1]().then(view[2]).catch(error => showErrorState(target, error, refreshVisibleData));
+    }
+  }
+}
+
+const viewRequests = new Map();
+
+function beginViewRequest(view) {
+  const id = (viewRequests.get(view) || 0) + 1;
+  viewRequests.set(view, id);
+  return () => viewRequests.get(view) === id;
+}
+
+function invalidateApiCache() {
+  apiCacheGeneration++;
+  apiReadCache.clear();
+  apiPendingReads.clear();
+  homeDataCache = null;
+  trendDataCache = null;
+  balanceDataCache = null;
+  rankingDataCache = null;
+  assetDataCache = {};
+  budgetDataCache = null;
+}
+
+function getCachedApiData(action, params = {}) {
+  const cached = apiReadCache.get(JSON.stringify([action, params]));
+  if (!cached || Date.now() - cached.time >= API_CACHE_TTL) return undefined;
+  return cached.data;
+}
+
+function callApi(action, params = {}, options = {}) {
+  const isRead = action.startsWith('get');
+  const key = JSON.stringify([action, params]);
+  const cached = apiReadCache.get(key);
+  if (isRead && cached && Date.now() - cached.time < API_CACHE_TTL) {
+    return Promise.resolve(cached.data);
+  }
+  if (isRead && apiPendingReads.has(key)) return apiPendingReads.get(key);
+
+  activeApiRequests++;
+  if (!options.speculative) latestApiError = '';
+  updateConnectionStatus();
+  const generation = apiCacheGeneration;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  const request = fetch(API_URL, {
     method: 'POST',
-    body: JSON.stringify({
-      action: action,
-      params: params
-    })
+    signal: controller.signal,
+    body: JSON.stringify({ action, params })
   })
     .then(function(response) {
+      if (!response.ok) throw new Error('通信に失敗しました（HTTP ' + response.status + '）');
       return response.json();
     })
     .then(function(result) {
-      if (!result.success) {
-        throw new Error(result.message || 'APIエラー');
+      if (!result.success) throw new Error(result.message || 'APIエラー');
+      if (isRead && generation === apiCacheGeneration) {
+        apiReadCache.delete(key);
+        apiReadCache.set(key, { time: Date.now(), data: result.data });
+        if (apiReadCache.size > 60) apiReadCache.delete(apiReadCache.keys().next().value);
+      } else if (!isRead) {
+        invalidateApiCache();
       }
-
+      if (!options.speculative) lastApiUpdate = new Date();
       return result.data;
+    })
+    .catch(function(error) {
+      if (error.name === 'AbortError') error = new Error('通信がタイムアウトしました。もう一度お試しください');
+      if (!options.speculative) latestApiError = '取得できませんでした。「更新」で再試行できます';
+      throw error;
+    })
+    .finally(function() {
+      clearTimeout(timeout);
+      activeApiRequests--;
+      updateConnectionStatus();
+      if (apiPendingReads.get(key) === request) apiPendingReads.delete(key);
     });
+  if (isRead) apiPendingReads.set(key, request);
+  return request;
+}
+
+const renderedMarkup = new WeakMap();
+
+function renderHtmlIfChanged(element, html) {
+  element.removeAttribute('aria-busy');
+  const previous = renderedMarkup.get(element);
+  if (previous && previous.html === html && previous.dom === element.innerHTML) return false;
+  element.innerHTML = html;
+  enhanceControls(element);
+  renderedMarkup.set(element, { html, dom: element.innerHTML });
+  return true;
+}
+
+function showLoadingState(element, chart = false) {
+  element.setAttribute('aria-busy', 'true');
+  element.innerHTML = '<div class="loading-placeholder' + (chart ? ' loading-chart' : '') +
+    '" role="status"><span class="loading-label">読み込み中…</span>' +
+    '<span class="skeleton-line"></span><span class="skeleton-line"></span>' +
+    '<span class="skeleton-line"></span></div>';
+}
+
+function showEmptyState(element, message = 'この条件に該当するデータはありません') {
+  renderHtmlIfChanged(element, '<div class="empty-state">' + escapeHtml(message) + '</div>');
+}
+
+function showErrorState(element, error, retry) {
+  element.removeAttribute('aria-busy');
+  element.replaceChildren();
+  const box = document.createElement('div');
+  box.className = 'error-state';
+  box.setAttribute('role', 'alert');
+  const message = document.createElement('p');
+  message.textContent = error.message || 'データを取得できませんでした';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'retry-button';
+  button.textContent = 'もう一度読み込む';
+  button.addEventListener('click', retry);
+  box.append(message, button);
+  element.append(box);
+}
+
+function canPrefetch() {
+  const connection = navigator.connection;
+  return document.visibilityState === 'visible' && navigator.onLine !== false &&
+    !(connection && (connection.saveData || /(^|-)2g$/.test(connection.effectiveType)));
+}
+
+let homePrefetchScheduled = false;
+function scheduleHomePrefetch() {
+  if (homePrefetchScheduled) return;
+  homePrefetchScheduled = true;
+  const generation = apiCacheGeneration;
+  setTimeout(function() {
+    if (!canPrefetch() || generation !== apiCacheGeneration || activeApiRequests > 0 ||
+        document.getElementById('homeScreen').classList.contains('hidden')) return;
+    // Only two read requests; no recurring polling or writes.
+    prefetchView('trend');
+  }, 800);
+}
+
+function prefetchView(view) {
+  if (!canPrefetch() || activeApiRequests > 0) return;
+  const actions = {
+    trend: ['getCategoryFilterMaster', 'getMonthlyTrendData'],
+    ranking: ['getCategoryFilterMaster', 'getRankingData'],
+    balance: ['getBalanceData']
+  }[view] || [];
+  actions.forEach(action => callApi(action, {}, { speculative: true }).catch(function() {}));
 }
 
 // ======================================
@@ -76,8 +251,7 @@ function callApi(action, params = {}) {
 
 function openKakeibo(){
   window.location.href =
-    "https://script.google.com/macros/s/AKfycbxeMor57OdXyu96EhZLmlIttYje5BwxW-OwC7Jm_5zUVyOW9EdwTsI8VNizWZvwMb0UFA/exec",
-    "kakeibo"
+    "https://script.google.com/macros/s/AKfycbxeMor57OdXyu96EhZLmlIttYje5BwxW-OwC7Jm_5zUVyOW9EdwTsI8VNizWZvwMb0UFA/exec";
 }
 
     function formatMoney(value) {
@@ -725,10 +899,12 @@ function updateMonthLabel() {
   const nextButton = document.getElementById('nextMonthButton');
 
   prevButton.disabled =
+    !homeDataCache ||
     selectedYear === minYear &&
     selectedMonth === minMonth;
 
   nextButton.disabled =
+    !homeDataCache ||
     selectedYear === maxYear &&
     selectedMonth === maxMonth;
 }
@@ -759,10 +935,14 @@ renderSelectedPerson(currentPerson);
 // ======================================
 
 function loadAllHomeData(initialPerson) {
+  currentPerson = initialPerson;
+  const isCurrent = beginViewRequest('home');
+  updateMonthLabel();
   setLoading();
 
   callApi('getAllHomeData')
     .then(function(result) {
+      if (!isCurrent()) return;
       homeDataCache = result.homeData;
 
       minYear = result.monthBounds.minYear;
@@ -771,9 +951,11 @@ function loadAllHomeData(initialPerson) {
       maxMonth = result.monthBounds.maxMonth;
 
       updateMonthLabel();
-      renderSelectedPerson(initialPerson);
+      renderSelectedPerson(currentPerson);
+      scheduleHomePrefetch();
     })
     .catch(function(error) {
+      if (!isCurrent()) return;
       document.getElementById('budgetStatus').textContent =
         'エラー: ' + error.message;
     });
@@ -789,6 +971,9 @@ function renderSelectedPerson(person) {
     !homeDataCache[key] ||
     !homeDataCache[key][person]
   ) {
+    ['dailyTotal', 'monthBudgetRemaining', 'yearBudgetRemaining', 'allTotal'].forEach(id => { document.getElementById(id).textContent = '—'; });
+    document.getElementById('budgetStatus').textContent = 'この月のデータはありません';
+    document.getElementById('monthlyBreakdown').textContent = '';
     return;
   }
 
@@ -796,7 +981,7 @@ function renderSelectedPerson(person) {
 }
 
 function changePerson(person, element) {
-  localStorage.setItem('etsuranSelectedPerson', person);
+  try { localStorage.setItem('etsuranSelectedPerson', person); } catch (_) {}
 
   document.querySelectorAll('[data-person]').forEach(function(tab) {
   tab.classList.remove('active');
@@ -812,17 +997,11 @@ function changePerson(person, element) {
 }
 
 function initializePerson() {
-  const savedPerson =
-    localStorage.getItem('etsuranSelectedPerson') || '共通';
-
-  const initialTab =
-    document.querySelector('[data-person="' + savedPerson + '"]');
-
-  if (initialTab) {
-    changePerson(savedPerson, initialTab);
-  } else {
-    loadAllHomeData(savedPerson);
-  }
+  let savedPerson = '共通';
+  try { savedPerson = localStorage.getItem('etsuranSelectedPerson') || '共通'; } catch (_) {}
+  if (!['共通', 'くる', 'ぐんま', '合計'].includes(savedPerson)) savedPerson = '共通';
+  const initialTab = document.querySelector('[data-person="' + savedPerson + '"]');
+  changePerson(savedPerson, initialTab);
 }
 
 // ======================================
@@ -893,17 +1072,20 @@ function getBudgetSelectionData(data) {
 
 function renderBudgetScreen() {
   const card = document.getElementById('budgetCard');
+  document.getElementById('budgetCard').removeAttribute('aria-busy');
   const button = document.getElementById('budgetActionButton');
 
   if (!card || !button) return;
 
   if (!budgetDataCache) {
+    button.disabled = true;
     card.textContent = '読み込み中...';
     button.textContent = '予算を作成';
     return;
   }
 
   const item = getBudgetSelectionData(budgetDataCache);
+  button.disabled = budgetSavePending || !item;
 
   if (!item) {
     card.innerHTML = '<div class="budget-card-empty">データがありません</div>';
@@ -972,17 +1154,25 @@ function changeBudgetPerson(person, element) {
 }
 
 function loadBudgetData() {
+  const params = { targetYear: selectedYear, targetMonth: selectedMonth };
+  budgetDataCache = getCachedApiData('getBudgetData', params);
+  const isCurrent = beginViewRequest('budget');
   updateBudgetMonthLabel();
 
   const card = document.getElementById('budgetCard');
   const button = document.getElementById('budgetActionButton');
 
+  if (budgetDataCache !== undefined) {
+    renderBudgetScreen();
+    return;
+  }
   if (card) {
-    card.textContent = '読み込み中...';
+    showLoadingState(card);
   }
 
   if (button) {
-    button.textContent = '予算を作成';
+    button.textContent = '読み込み中…';
+    button.disabled = true;
   }
 
   callApi('getBudgetData', {
@@ -990,17 +1180,25 @@ function loadBudgetData() {
     targetMonth: selectedMonth
   })
     .then(function(data) {
+    if (!isCurrent()) return;
       budgetDataCache = data;
       renderBudgetScreen();
     })
     .catch(function(error) {
+    if (!isCurrent()) return;
       if (card) {
-        card.textContent = 'エラー: ' + error.message;
+        showErrorState(card, error, loadBudgetData);
       }
     });
 }
 
+let budgetSavePending = false;
+
 function handleBudgetAction() {
+  if (budgetSavePending || !budgetDataCache) return;
+  budgetSavePending = true;
+  const button = document.getElementById('budgetActionButton');
+  if (button) button.disabled = true;
   const params = {
     targetYear: selectedYear,
     targetMonth: selectedMonth,
@@ -1017,6 +1215,11 @@ function handleBudgetAction() {
       if (card) {
         card.textContent = 'エラー: ' + error.message;
       }
+    })
+    .finally(function() {
+      budgetSavePending = false;
+      if (button) button.disabled = !budgetDataCache || !getBudgetSelectionData(budgetDataCache);
+      updateConnectionStatus();
     });
 }
 
@@ -1037,17 +1240,19 @@ function showTrendScreen() {
   hideAllScreens();
 
   document.getElementById('trendScreen').classList.remove('hidden');
+  if (!trendDataCache) showLoadingState(document.getElementById('trendChartCard'), true);
+
+  if (!categoryMasterCache) getMonthlyTrendDataApi().catch(function() {});
 
 if (!categoryMasterCache) {
   getCategoryFilterMasterApi()
   .then(function(master) {
     categoryMasterCache = master;
     trendSelectedCategories = getTrendAllCategoriesFromMaster();
-    showTrendScreen();
+    if (!document.getElementById('trendScreen').classList.contains('hidden')) showTrendScreen();
   })
   .catch(function(error) {
-    document.getElementById('trendChartCard').textContent =
-      'エラー: ' + error.message;
+    showErrorState(document.getElementById('trendChartCard'), error, showTrendScreen);
   });
 
   return;
@@ -1070,10 +1275,13 @@ setTrendPersonTab(currentTrendPerson);
 
 
 
-  if (trendDataCache) {
+  const cached = getCachedApiData('getMonthlyTrendData');
+  if (cached !== undefined) {
+    trendDataCache = cached;
     renderTrendChart();
     return;
   }
+  if (trendDataCache) renderTrendChart();
 
   getMonthlyTrendDataApi()
   .then(function(data) {
@@ -1081,8 +1289,7 @@ setTrendPersonTab(currentTrendPerson);
     renderTrendChart();
   })
   .catch(function(error) {
-      document.getElementById('trendChartCard').textContent =
-  'エラー: ' + error.message;
+      showErrorState(document.getElementById('trendChartCard'), error, showTrendScreen);
     })
     
 }
@@ -1094,11 +1301,12 @@ function renderTrendChart() {
   const chart = document.getElementById('trendChartCard');
 
   if (!trendDataCache || !trendDataCache[currentTrendPerson]) {
-    chart.textContent = 'データがありません';
+    showEmptyState(chart);
     return;
   }
 
   const data = getCurrentTrendData();
+  if (!data.length) { showEmptyState(chart); return; }
 
   const maxValue = Math.max.apply(null, data.map(function(item) {
   return item.total;
@@ -1208,7 +1416,7 @@ if (budgetLine) {
 
   html += renderTrendLegend();
 
-  chart.innerHTML = html;
+  renderHtmlIfChanged(chart, html);
 
   let target = null;
 
@@ -1609,21 +1817,26 @@ function changeAssetPerson(person, element) {
 }
 
 function loadAssetData() {
+  const isCurrent = beginViewRequest('asset');
+  const requestedPerson = currentAssetPerson;
   const summary = document.getElementById('assetSummaryCard');
-  summary.textContent = '読み込み中...';
-
-  if (assetDataCache[currentAssetPerson]) {
-    renderAssetScreen(assetDataCache[currentAssetPerson]);
+  const cached = getCachedApiData('getAssetData', { selectedPerson: requestedPerson });
+  if (cached !== undefined) {
+    assetDataCache[requestedPerson] = cached;
+    renderAssetScreen(cached);
     return;
   }
+  showLoadingState(summary);
 
   getAssetDataApi(currentAssetPerson)
   .then(function(data) {
-    assetDataCache[currentAssetPerson] = data;
+    if (!isCurrent()) return;
+    assetDataCache[requestedPerson] = data;
     renderAssetScreen(data);
   })
   .catch(function(error) {
-    summary.textContent = 'エラー: ' + error.message;
+    if (!isCurrent()) return;
+    showErrorState(summary, error, loadAssetData);
   });
 }
 
@@ -1634,7 +1847,7 @@ function renderAssetScreen(data) {
 function renderAssetSummary(summary, details, trend) {
   const card = document.getElementById('assetSummaryCard');
 
-  card.innerHTML =
+  const html =
     '<div class="asset-summary-label">' + summary.targetLabel + '</div>' +
     '<div class="asset-summary-title">総資産</div>' +
 
@@ -1665,6 +1878,7 @@ function renderAssetSummary(summary, details, trend) {
     '<div id="assetTrendInSummary">' +
       renderAssetTrendHtml(trend) +
     '</div>';
+  renderHtmlIfChanged(card, html);
 }
 
 function renderAssetInlineDetailRows(details) {
@@ -1716,7 +1930,7 @@ function renderAssetTrend(trend) {
 
   if (!chart) return;
 
-  chart.innerHTML = renderAssetTrendHtml(trend);
+  renderHtmlIfChanged(chart, renderAssetTrendHtml(trend));
 }
 
 function renderAssetTrendHtml(trend) {
@@ -1863,7 +2077,7 @@ function renderAssetDetails(details) {
 
   html += '</div>';
 
-  card.innerHTML = html;
+  renderHtmlIfChanged(card, html);
 }
 
 function toggleAssetDetailInline() {
@@ -1877,12 +2091,19 @@ function showHomeScreen() {
   hideAllScreens();
 
   document.getElementById('homeScreen').classList.remove('hidden');
+  if (!homeDataCache) loadAllHomeData(currentPerson);
 }
 
 function showRankingScreen() {
   hideAllScreens();
 
   document.getElementById('rankingScreen').classList.remove('hidden');
+  if (!rankingDataCache) {
+    document.getElementById('rankingTop3').replaceChildren();
+    showLoadingState(document.getElementById('rankingList'), true);
+  }
+
+  if (!categoryMasterCache) getRankingDataApi().catch(function() {});
 
   if (!categoryMasterCache) {
     getCategoryFilterMasterApi()
@@ -1899,11 +2120,10 @@ function showRankingScreen() {
       selectedCategories.push(category);
     });
 
-    showRankingScreen();
+    if (!document.getElementById('rankingScreen').classList.contains('hidden')) showRankingScreen();
   })
   .catch(function(error) {
-    document.getElementById('rankingList').textContent =
-      'エラー: ' + error.message;
+    showErrorState(document.getElementById('rankingList'), error, showRankingScreen);
   });
 
     return;
@@ -1926,10 +2146,13 @@ function showRankingScreen() {
 
   setRankingPersonTab(currentRankingPerson);
 
-  if (rankingDataCache) {
+  const cached = getCachedApiData('getRankingData');
+  if (cached !== undefined) {
+    rankingDataCache = cached;
     renderRankingScreen();
     return;
   }
+  if (rankingDataCache) renderRankingScreen();
 
   getRankingDataApi()
   .then(function(data) {
@@ -1937,8 +2160,7 @@ function showRankingScreen() {
     renderRankingScreen();
   })
   .catch(function(error) {
-    document.getElementById('rankingList').textContent =
-      'エラー: ' + error.message;
+    showErrorState(document.getElementById('rankingList'), error, showRankingScreen);
   });
 }
 
@@ -1974,7 +2196,11 @@ if (!categoryMasterCache) {
       calendarSelectedCategories.push(category);
     });
 
-    showCalendarScreen();
+    if (!document.getElementById('calendarScreen').classList.contains('hidden')) {
+      const button = document.getElementById('calendarCategoryFilterButton');
+      if (button) button.textContent = getCalendarCategoryButtonLabel();
+      loadCalendarData();
+    }
   })
   .catch(function(error) {
     document.getElementById('calendarContainer').textContent =
@@ -2055,8 +2281,22 @@ function changeCalendarMonth(diff) {
 }
 
 function loadCalendarData() {
+  const isCurrent = beginViewRequest('calendar');
   const container = document.getElementById('calendarContainer');
-  container.textContent = '読み込み中...';
+  const cached = getCachedApiData('getCalendarData', {
+    targetYear: selectedCalendarYear,
+    targetMonth: selectedCalendarMonth,
+    selectedPerson: currentCalendarPerson,
+    selectedCategories: calendarSelectedCategories
+  });
+  currentCalendarData = null;
+  selectedCalendarDay = null;
+  if (cached !== undefined) {
+    currentCalendarData = cached;
+    renderCalendarSkeleton(cached);
+    return;
+  }
+  showLoadingState(container);
 
   getCalendarDataApi(
   selectedCalendarYear,
@@ -2065,16 +2305,19 @@ function loadCalendarData() {
   calendarSelectedCategories
 )
   .then(function(data) {
+    if (!isCurrent()) return;
     currentCalendarData = data;
     renderCalendarSkeleton(data);
   })
   .catch(function(error) {
-    container.textContent = 'エラー: ' + error.message;
+    if (!isCurrent()) return;
+    showErrorState(container, error, loadCalendarData);
   });
 }
 
 function renderCalendarSkeleton(calendarData) {
   const container = document.getElementById('calendarContainer');
+  document.getElementById('calendarContainer').removeAttribute('aria-busy');
 
   const year = selectedCalendarYear;
   const month = selectedCalendarMonth;
@@ -2145,7 +2388,7 @@ html +=
   html += '日付をタップすると明細を表示します';
   html += '</div>';
 
-  container.innerHTML = html; 
+  renderHtmlIfChanged(container, html);
 }
 
 function formatCalendarAmount(value) {
@@ -2218,7 +2461,7 @@ function renderRankingScreen() {
 
   if (currentRankingPeriod === 'custom') {
     if (!rankingDataCache.all || !rankingDataCache.all[currentRankingPerson]) {
-      return;
+      renderRankingTop3([]); renderRankingList([]); return;
     }
 
     items = filterRankingItemsByPeriod(
@@ -2231,7 +2474,7 @@ function renderRankingScreen() {
       !rankingDataCache[currentRankingPeriod] ||
       !rankingDataCache[currentRankingPeriod][currentRankingPerson]
     ) {
-      return;
+      renderRankingTop3([]); renderRankingList([]); return;
     }
 
     items = rankingDataCache[currentRankingPeriod][currentRankingPerson];
@@ -2277,8 +2520,7 @@ function renderRankingTop3(items) {
   const top3 = document.getElementById('rankingTop3');
 
   if (!items || items.length === 0) {
-    top3.innerHTML =
-      '<div class="placeholder-card">ランキング対象の支出がありません</div>';
+    showEmptyState(top3, 'ランキング対象の支出がありません');
     return;
   }
 
@@ -2324,7 +2566,7 @@ function renderRankingTop3(items) {
 
   html += '</div>';
 
-  top3.innerHTML = html;
+  renderHtmlIfChanged(top3, html);
 }
 
 function renderRankingList(items) {
@@ -2333,7 +2575,8 @@ function renderRankingList(items) {
   const rest = items.slice(3, 20);
 
   if (rest.length === 0) {
-    list.innerHTML = '';
+    list.removeAttribute('aria-busy');
+    list.replaceChildren();
     return;
   }
 
@@ -2353,7 +2596,7 @@ function renderRankingList(items) {
       '</div>';
   });
 
-  list.innerHTML = html;
+  renderHtmlIfChanged(list, html);
 }
 
 function changeRankingPerson(person, element) {
@@ -2379,14 +2622,35 @@ function focusPeriodEndDate() {
   }
 }
 
+const modalReturnFocus = new Map();
+function openModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal.classList.contains('open')) modalReturnFocus.set(id, document.activeElement);
+  modal.classList.add('open');
+  modal.setAttribute('aria-modal', 'true');
+  document.body.classList.add('modal-open');
+  const closeButton = modal.querySelector('.sheet-close');
+  if (closeButton) closeButton.focus({ preventScroll: true });
+}
+
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  modal.classList.remove('open');
+  modal.removeAttribute('aria-modal');
+  if (!document.querySelector('.sheet-modal.open')) document.body.classList.remove('modal-open');
+  const previous = modalReturnFocus.get(id);
+  if (previous && previous.isConnected) previous.focus({ preventScroll: true });
+  modalReturnFocus.delete(id);
+}
+
 function openPeriodSheet(callback) {
   periodApplyCallback = callback;
 
-  document.getElementById('periodModal').classList.add('open');
+  openModal('periodModal');
 }
 
 function closePeriodSheet() {
-  document.getElementById('periodModal').classList.remove('open');
+  closeModal('periodModal');
 }
 
 function openTrendCategorySheet() {
@@ -2417,7 +2681,7 @@ function openCategorySheet() {
   if (categoryMasterCache) {
     renderCategorySheet();
 
-    document.getElementById('categoryModal').classList.add('open');
+    openModal('categoryModal');
     return;
   }
 
@@ -2437,7 +2701,7 @@ function openCategorySheet() {
 
     renderCategorySheet();
 
-    document.getElementById('categoryModal').classList.add('open');
+    openModal('categoryModal');
   })
   .catch(function(error) {
     alert('カテゴリ取得エラー: ' + error.message);
@@ -2566,7 +2830,7 @@ function renderCategorySheet() {
       '</div>';
   });
 
-  content.innerHTML = html;
+  renderHtmlIfChanged(content, html);
 }
 
 function toggleCategoryGroup(element) {
@@ -2689,7 +2953,7 @@ function toggleAllCategories(checkbox) {
 }
 
 function closeCategorySheet() {
-  document.getElementById('categoryModal').classList.remove('open');
+  closeModal('categoryModal');
 
   if (categorySheetMode === 'trend') {
     const button =
@@ -2755,14 +3019,21 @@ function showBalanceScreen() {
   hideAllScreens();
 
   document.getElementById('balanceScreen').classList.remove('hidden');
+  if (!balanceDataCache) {
+    document.getElementById('balanceMonthlyTable').replaceChildren();
+    showLoadingState(document.getElementById('balanceSummaryCard'), true);
+  }
 
   currentBalancePerson = currentPerson || '共通';
   setBalancePersonTab(currentBalancePerson);
 
-  if (balanceDataCache) {
+  const cached = getCachedApiData('getBalanceData');
+  if (cached !== undefined) {
+    balanceDataCache = cached;
     renderBalanceScreen();
     return;
   }
+  if (balanceDataCache) renderBalanceScreen();
 
   getBalanceDataApi()
   .then(function(data) {
@@ -2770,8 +3041,7 @@ function showBalanceScreen() {
     renderBalanceScreen();
   })
   .catch(function(error) {
-    document.getElementById('balanceSummaryCard').textContent =
-      'エラー: ' + error.message;
+    showErrorState(document.getElementById('balanceSummaryCard'), error, showBalanceScreen);
   });
 }
 
@@ -2798,7 +3068,9 @@ function changeBalancePerson(person, element) {
 }
 
 function renderBalanceScreen() {
-  if (!balanceDataCache || !balanceDataCache[currentBalancePerson]) {
+  if (!balanceDataCache || !balanceDataCache[currentBalancePerson] || !balanceDataCache[currentBalancePerson].length) {
+    showEmptyState(document.getElementById('balanceSummaryCard'));
+    document.getElementById('balanceMonthlyTable').replaceChildren();
     return;
   }
 
@@ -2827,7 +3099,7 @@ function renderBalanceSummary(data) {
 
   const totalBalance = totalIncome - totalExpense;
 
-summary.innerHTML =
+const html =
   '<div class="balance-summary-title">' +
     currentYear + '年累計' +
   '</div>' +
@@ -2847,6 +3119,7 @@ summary.innerHTML =
       '<div class="balance-small-value">' + formatMoney(totalExpense) + '</div>' +
     '</div>' +
   '</div>';
+  renderHtmlIfChanged(summary, html);
 }
 
 function renderBalanceTable(data) {
@@ -2877,7 +3150,7 @@ function renderBalanceTable(data) {
     html += '</div>';
   });
 
-  table.innerHTML = html;
+  renderHtmlIfChanged(table, html);
 }
 
 // ======================================
@@ -2898,6 +3171,8 @@ function openTrendExpenseList() {
 }
 
 let sheetTouchStartY = 0;
+let sheetTouchStartX = 0;
+let sheetSwipeActive = false;
 
 function openExpenseList(
   year = selectedYear,
@@ -2905,13 +3180,21 @@ function openExpenseList(
   person = currentPerson,
   type = 'total',
   source = 'home'
-  ) { 
+  ) {
+  const isCurrent = beginViewRequest('expense');
   const modal = document.getElementById('expenseModal');
   const content = document.getElementById('expenseListContent');
 
-  modal.classList.add('open');
+  openModal('expenseModal');
   modal.classList.remove('fullscreen');
-  content.textContent = '読み込み中...';
+  const cached = getCachedApiData('getMonthlyExpenseList', {
+    targetYear: year, targetMonth: month, selectedPerson: person
+  });
+  if (cached !== undefined) {
+    renderExpenseList(cached, year, month, person, type, source);
+    return;
+  }
+  showLoadingState(content);
 
   getMonthlyExpenseListApi(
   year,
@@ -2919,27 +3202,36 @@ function openExpenseList(
   person
 )
   .then(function(groups) {
+    if (!isCurrent()) return;
     renderExpenseList(groups, year, month, person, type, source);
   })
   .catch(function(error) {
-    content.textContent = 'エラー: ' + error.message;
+    if (!isCurrent()) return;
+    showErrorState(content, error, () => openExpenseList(year, month, person, type, source));
   });
 }
 
 function closeExpenseList() {
-  document.getElementById('expenseModal').classList.remove('open');
+  beginViewRequest('expense');
+  closeModal('expenseModal');
 }
 
 function handleSheetTouchStart(event) {
+  sheetSwipeActive = event.touches.length === 1 && !!event.target.closest('.sheet-header');
+  if (!sheetSwipeActive) return;
   sheetTouchStartY = event.touches[0].clientY;
+  sheetTouchStartX = event.touches[0].clientX;
 }
 
 function handleSheetTouchEnd(event) {
+  if (!sheetSwipeActive) return;
+  sheetSwipeActive = false;
+  if (Math.abs(event.changedTouches[0].clientX - sheetTouchStartX) > 50) return;
   const endY = event.changedTouches[0].clientY;
   const diffY = sheetTouchStartY - endY;
 
   const modal = document.getElementById('expenseModal');
-  const panel = document.querySelector('.sheet-panel');
+  const panel = document.querySelector('#expenseModal .sheet-panel');
 
   if (diffY > 60) {
     modal.classList.add('fullscreen');
@@ -2947,22 +3239,24 @@ function handleSheetTouchEnd(event) {
 
   if (diffY < -60 && panel.scrollTop === 0) {
     modal.classList.remove('fullscreen');
-    modal.classList.remove('open');
+    closeExpenseList();
   }
 }
 
 function renderExpenseList(groups, year, month, person, type, source) {
   const content = document.getElementById('expenseListContent');
+  document.getElementById('expenseListContent').removeAttribute('aria-busy');
   const typeLabel = getTrendTypeLabel(type);
 
-  content.innerHTML =
+  const html =
     '<div class="expense-page-title">' +
     year + '年' +
     (month + 1) + '月　' +
     getPersonDisplayName(person) + '　' +
     typeLabel +
     '</div>' +
-    renderExpenseSectionsByType(groups, type, source);
+    (renderExpenseSectionsByType(groups, type, source) || '<div class="empty-state">この条件に該当する支出はありません</div>');
+  renderHtmlIfChanged(content, html);
 }
 
 function filterExpenseItemsByTrendCategories(items) {
@@ -3013,6 +3307,12 @@ function getPersonDisplayName(person) {
   return person;
 }
 
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[character]);
+}
+
 function renderExpenseSection(title, items) {
 
   if (!items || items.length === 0) {
@@ -3037,11 +3337,11 @@ function renderExpenseSection(title, items) {
     html += '<div class="expense-row">';
 
     html += '<div class="expense-left">';
-    html += item.date +
+    html += escapeHtml(item.date) +
       '　' +
-      item.category +
+      escapeHtml(item.category) +
       '　' +
-      item.memo;
+      escapeHtml(item.memo);
     html += '</div>';
 
     html += '<div class="expense-amount">';
@@ -3061,12 +3361,49 @@ function renderExpenseSection(title, items) {
 // ======================================
 
 document
-  .querySelector('.sheet-panel')
-  .addEventListener('touchstart', handleSheetTouchStart);
+  .querySelector('#expenseModal .sheet-panel')
+  .addEventListener('touchstart', handleSheetTouchStart, { passive: true });
 
 document
-  .querySelector('.sheet-panel')
-  .addEventListener('touchend', handleSheetTouchEnd);
+  .querySelector('#expenseModal .sheet-panel')
+  .addEventListener('touchend', handleSheetTouchEnd, { passive: true });
+
+function closeTopModal() {
+  if (document.getElementById('expenseModal').classList.contains('open')) closeExpenseList();
+  else if (document.getElementById('periodModal').classList.contains('open')) closePeriodSheet();
+  else if (document.getElementById('categoryModal').classList.contains('open')) closeCategorySheet();
+}
+
+document.querySelectorAll('.sheet-modal').forEach(function(modal) {
+  modal.addEventListener('click', event => { if (event.target === modal) closeTopModal(); });
+});
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') closeTopModal();
+  if (event.key === 'Tab') {
+    const modal = document.querySelector('.sheet-modal.open');
+    if (!modal) return;
+    const controls = [...modal.querySelectorAll('button, input, [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
+    const first = controls[0], last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+  const target = event.target;
+  if ((event.key === 'Enter' || event.key === ' ') && target.matches('[role="button"][onclick]')) {
+    event.preventDefault(); target.click();
+  }
+});
+// Dynamic chart controls get the same keyboard behavior as static controls.
+function enhanceControls(root) {
+  root.querySelectorAll('div[onclick]').forEach(function(control) {
+    control.setAttribute('role', 'button');
+    control.tabIndex = 0;
+  });
+}
+enhanceControls(document);
+document.querySelectorAll('[data-prefetch]').forEach(function(control) {
+  ['pointerenter', 'focus', 'touchstart'].forEach(event => control.addEventListener(event,
+    () => prefetchView(control.dataset.prefetch), { passive: true }));
+});
 
 initializePerson();
 

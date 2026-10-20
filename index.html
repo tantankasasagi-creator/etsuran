@@ -1,13 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 
 <head>
+  <meta charset="UTF-8">
+  <title>etsuran</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
 
 </head>
 
 <body>
+  <div class="connection-toolbar">
+    <span id="connectionStatus" role="status" aria-live="polite"></span>
+    <button type="button" id="refreshDataButton" onclick="refreshVisibleData()">↻ 更新</button>
+  </div>
 
   <div id="homeScreen">
 
@@ -27,9 +33,9 @@
     </div>
 
     <div class="month-switcher">
-      <button class="month-button" id="prevMonthButton" onclick="changeMonth(-1)">‹</button>
+      <button class="month-button" id="prevMonthButton" aria-label="前の月" onclick="changeMonth(-1)">‹</button>
       <div class="month" id="monthLabel">----</div>
-      <button class="month-button" id="nextMonthButton" onclick="changeMonth(1)">›</button>
+      <button class="month-button" id="nextMonthButton" aria-label="次の月" onclick="changeMonth(1)">›</button>
     </div>
 
     <div class="hero">
@@ -88,17 +94,17 @@
         <div class="menu-text">カレンダー</div>
       </div>
 
-      <div class="menu-item" onclick="showTrendScreen()">
+      <div class="menu-item" data-prefetch="trend" onclick="showTrendScreen()">
         <div class="menu-icon">📈</div>
         <div class="menu-text">月別推移</div>
       </div>
 
-      <div class="menu-item" onclick="showBalanceScreen()">
+      <div class="menu-item" data-prefetch="balance" onclick="showBalanceScreen()">
         <div class="menu-icon">💴</div>
         <div class="menu-text">収支</div>
       </div>
 
-      <div class="menu-item" onclick="showRankingScreen()">
+      <div class="menu-item" data-prefetch="ranking" onclick="showRankingScreen()">
         <div class="menu-icon">🏆</div>
         <div class="menu-text">ランキング</div>
       </div>
@@ -132,9 +138,9 @@
     </div>
 
     <div class="month-switcher">
-      <button class="month-button" id="budgetPrevMonthButton" onclick="changeBudgetMonth(-1)">‹</button>
+      <button class="month-button" id="budgetPrevMonthButton" aria-label="前の月" onclick="changeBudgetMonth(-1)">‹</button>
       <div class="month" id="budgetMonthLabel">----</div>
-      <button class="month-button" id="budgetNextMonthButton" onclick="changeBudgetMonth(1)">›</button>
+      <button class="month-button" id="budgetNextMonthButton" aria-label="次の月" onclick="changeBudgetMonth(1)">›</button>
     </div>
 
     <div class="placeholder-card budget-card" id="budgetCard">
@@ -253,9 +259,9 @@
     </div>
 
     <div class="month-switcher">
-      <button class="month-button" onclick="changeCalendarMonth(-1)">‹</button>
+      <button class="month-button" aria-label="前の月" onclick="changeCalendarMonth(-1)">‹</button>
       <div class="month" id="calendarMonthLabel">----</div>
-      <button class="month-button" onclick="changeCalendarMonth(1)">›</button>
+      <button class="month-button" aria-label="次の月" onclick="changeCalendarMonth(1)">›</button>
     </div>
 
     <div class="filter-condition-card">
@@ -306,12 +312,12 @@
 
   </div>
 
-  <div class="sheet-modal" id="periodModal">
+  <div class="sheet-modal" id="periodModal" role="dialog" aria-label="期間を選択">
     <div class="sheet-panel period-panel">
 
       <div class="sheet-header">
         <div class="sheet-title">期間指定</div>
-        <button class="sheet-close" onclick="closePeriodSheet()">×</button>
+        <button class="sheet-close" aria-label="閉じる" onclick="closePeriodSheet()">×</button>
       </div>
 
       <div class="period-field">
@@ -332,12 +338,12 @@
     </div>
   </div>
 
-  <div class="sheet-modal" id="categoryModal">
+  <div class="sheet-modal" id="categoryModal" role="dialog" aria-label="条件を選択">
     <div class="sheet-panel category-panel">
 
       <div class="sheet-header">
         <div class="sheet-title hidden"></div>
-        <button class="sheet-close" onclick="closeCategorySheet()">×</button>
+        <button class="sheet-close" aria-label="閉じる" onclick="closeCategorySheet()">×</button>
       </div>
 
       <div id="categorySheetContent">
@@ -347,11 +353,11 @@
     </div>
   </div>
 
-  <div class="sheet-modal" id="expenseModal">
+  <div class="sheet-modal" id="expenseModal" role="dialog" aria-label="支出明細">
     <div class="sheet-panel">
       <div class="sheet-header">
         <div class="sheet-title"></div>
-        <button class="sheet-close" onclick="closeExpenseList()">×</button>
+        <button class="sheet-close" aria-label="閉じる" onclick="closeExpenseList()">×</button>
       </div>
       <div id="expenseListContent">読み込み中...</div>
     </div>
