@@ -23,6 +23,7 @@ jobs:
           node tests/api.test.cjs
           TZ=Asia/Tokyo node tests/gas.test.cjs
           TZ=UTC node tests/gas.test.cjs
+          TZ=Asia/Tokyo node tests/gas-ranking.test.cjs
       - name: Build static site
         run: node tools/build-site.cjs
       - uses: actions/upload-pages-artifact@v3

@@ -16,7 +16,20 @@ function getBalanceDataApi() {
 }
 
 function getRankingDataApi() {
-  return callApi('getRankingData');
+  return callApi('getRankingData', { compact: true }).then(normalizeRankingData);
+}
+
+function normalizeRankingData(data) {
+  if (data.currentMonth && data.currentYear) return data;
+  const now = new Date();
+  const year = Number.isInteger(data.currentYearNumber) ? data.currentYearNumber : now.getFullYear();
+  const month = Number.isInteger(data.currentMonthNumber) ? data.currentMonthNumber : now.getMonth();
+  const result = { all: data.all || {}, currentMonth: {}, currentYear: {} };
+  Object.keys(result.all).forEach(function (person) {
+    result.currentYear[person] = result.all[person].filter(item => item.year === year);
+    result.currentMonth[person] = result.currentYear[person].filter(item => item.month === month);
+  });
+  return result;
 }
 
 function getAssetDataApi(selectedPerson) {
@@ -57,6 +70,8 @@ const apiPendingReads = new Map();
 const API_CACHE_TTL = 60 * 1000;
 let apiCacheGeneration = 0;
 let activeApiRequests = 0;
+let activeSpeculativeRequests = 0;
+const apiReadStates = new Map();
 let latestApiError = '';
 let lastApiUpdate = null;
 
@@ -64,18 +79,19 @@ function updateConnectionStatus() {
   const status = document.getElementById('connectionStatus');
   const button = document.getElementById('refreshDataButton');
   if (!status) return;
-  status.classList.toggle('is-loading', activeApiRequests > 0);
-  status.classList.toggle('is-error', activeApiRequests === 0 && !!latestApiError);
-  status.textContent = activeApiRequests > 0
+  const foregroundBusy = activeApiRequests > activeSpeculativeRequests;
+  status.classList.toggle('is-loading', foregroundBusy);
+  status.classList.toggle('is-error', !foregroundBusy && !!latestApiError);
+  status.textContent = foregroundBusy
     ? 'データを読み込み中…'
     : latestApiError || (lastApiUpdate
       ? '更新 ' + lastApiUpdate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
       : '');
-  if (button) button.disabled = activeApiRequests > 0 || budgetSavePending;
+  if (button) button.disabled = foregroundBusy || budgetSavePending;
 }
 
 function refreshVisibleData() {
-  if (activeApiRequests > 0 || budgetSavePending) return;
+  if (activeApiRequests > activeSpeculativeRequests || budgetSavePending) return;
   invalidateApiCache();
   latestApiError = '';
   const visible = id => !document.getElementById(id).classList.contains('hidden');
@@ -111,6 +127,7 @@ function invalidateApiCache() {
   apiCacheGeneration++;
   apiReadCache.clear();
   apiPendingReads.clear();
+  apiReadStates.clear();
   homeDataCache = null;
   trendDataCache = null;
   balanceDataCache = null;
@@ -132,10 +149,20 @@ function callApi(action, params = {}, options = {}) {
   if (isRead && cached && Date.now() - cached.time < API_CACHE_TTL) {
     return Promise.resolve(cached.data);
   }
-  if (isRead && apiPendingReads.has(key)) return apiPendingReads.get(key);
+  if (isRead && apiPendingReads.has(key)) {
+    const state = apiReadStates.get(key);
+    if (state && state.speculative && !options.speculative) {
+      state.speculative = false;
+      activeSpeculativeRequests--;
+      updateConnectionStatus();
+    }
+    return apiPendingReads.get(key);
+  }
 
+  const state = { speculative: !!options.speculative };
   activeApiRequests++;
-  if (!options.speculative) latestApiError = '';
+  if (state.speculative) activeSpeculativeRequests++;
+  if (!state.speculative) latestApiError = '';
   updateConnectionStatus();
   const generation = apiCacheGeneration;
   const controller = new AbortController();
@@ -158,21 +185,22 @@ function callApi(action, params = {}, options = {}) {
       } else if (!isRead) {
         invalidateApiCache();
       }
-      if (!options.speculative) lastApiUpdate = new Date();
+      if (!state.speculative) lastApiUpdate = new Date();
       return result.data;
     })
     .catch(function(error) {
       if (error.name === 'AbortError') error = new Error('通信がタイムアウトしました。もう一度お試しください');
-      if (!options.speculative) latestApiError = '取得できませんでした。「更新」で再試行できます';
+      if (!state.speculative) latestApiError = '取得できませんでした。「更新」で再試行できます';
       throw error;
     })
     .finally(function() {
       clearTimeout(timeout);
       activeApiRequests--;
+      if (state.speculative) activeSpeculativeRequests--;
       updateConnectionStatus();
-      if (apiPendingReads.get(key) === request) apiPendingReads.delete(key);
+      if (apiPendingReads.get(key) === request) { apiPendingReads.delete(key); apiReadStates.delete(key); }
     });
-  if (isRead) apiPendingReads.set(key, request);
+  if (isRead) { apiPendingReads.set(key, request); apiReadStates.set(key, state); }
   return request;
 }
 
@@ -232,8 +260,8 @@ function scheduleHomePrefetch() {
     if (!canPrefetch() || generation !== apiCacheGeneration || activeApiRequests > 0 ||
         document.getElementById('homeScreen').classList.contains('hidden')) return;
     // Only two read requests; no recurring polling or writes.
-    prefetchView('trend');
-  }, 800);
+    prefetchView('ranking');
+  }, 150);
 }
 
 function prefetchView(view) {
@@ -243,7 +271,7 @@ function prefetchView(view) {
     ranking: ['getCategoryFilterMaster', 'getRankingData'],
     balance: ['getBalanceData']
   }[view] || [];
-  actions.forEach(action => callApi(action, {}, { speculative: true }).catch(function() {}));
+  actions.forEach(action => callApi(action, action === 'getRankingData' ? { compact: true } : {}, { speculative: true }).catch(function() {}));
 }
 
 // ======================================
@@ -2147,9 +2175,9 @@ function showRankingScreen() {
 
   setRankingPersonTab(currentRankingPerson);
 
-  const cached = getCachedApiData('getRankingData');
+  const cached = getCachedApiData('getRankingData', { compact: true });
   if (cached !== undefined) {
-    rankingDataCache = cached;
+    rankingDataCache = normalizeRankingData(cached);
     renderRankingScreen();
     return;
   }

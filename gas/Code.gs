@@ -1100,7 +1100,7 @@ function getBalanceData() {
   return result;
 }
 
-function getRankingData() {
+function getRankingData(compact) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const data = loadCalendarSourceData(ss);
   const categoryMap = buildCategoryMap(data.categoryValues);
@@ -1119,6 +1119,7 @@ function getRankingData() {
     result.all[person] = [];
   });
 
+  const dateLabels = new Map();
   const today = new Date();
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth();
@@ -1145,8 +1146,10 @@ function getRankingData() {
 
     const d = new Date(date);
 
+    const timestamp = d.getTime();
+    if (!dateLabels.has(timestamp)) dateLabels.set(timestamp, Utilities.formatDate(d, 'Asia/Tokyo', 'M/d'));
     const item = {
-      date: Utilities.formatDate(d, 'Asia/Tokyo', 'M/d'),
+      date: dateLabels.get(timestamp),
       sortKey:
         d.getFullYear() * 10000 +
         (d.getMonth() + 1) * 100 +
@@ -1159,14 +1162,23 @@ function getRankingData() {
       amount: amount
     };
 
-    addRankingItem(result, person, item, d, currentYear, currentMonth);
+    result.all[person].push(item);
 
     if (!isInternalTransferExpense(person, memo)) {
-      addRankingItem(result, '合計', item, d, currentYear, currentMonth);
+      result.all['合計'].push(item);
     }
   }
 
-  sortRankingResult(result);
+  persons.forEach(function (person) {
+    result.all[person].sort(function (a, b) { return Number(b.amount) - Number(a.amount); });
+  });
+  if (compact === true) {
+    return { all: result.all, currentYearNumber: currentYear, currentMonthNumber: currentMonth };
+  }
+  persons.forEach(function (person) {
+    result.currentYear[person] = result.all[person].filter(function (item) { return item.year === currentYear; });
+    result.currentMonth[person] = result.currentYear[person].filter(function (item) { return item.month === currentMonth; });
+  });
 
   return result;
 }
@@ -1342,7 +1354,7 @@ function doPost(e) {
         break;
 
       case 'getRankingData':
-        result = getRankingData();
+        result = getRankingData(params.compact === true);
         break;
 
       case 'getAssetData':

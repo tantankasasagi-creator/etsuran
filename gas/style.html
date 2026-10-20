@@ -1809,7 +1809,7 @@ body.modal-open { overflow: hidden; }
 .sheet-panel { overscroll-behavior-y: contain; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
 .sheet-header { touch-action: pan-x; }
 button, [role="button"], input { touch-action: manipulation; }
-button, .tab, .trend-tab, .sheet-close { min-height: 44px; }
+button, .tab, .trend-tab, .sheet-close { box-sizing: border-box; min-height: 44px; }
 .tab, .trend-tab { display: flex; justify-content: center; align-items: center; }
 .sheet-close { min-width: 44px; }
 [role="button"] { cursor: pointer; }
@@ -1817,6 +1817,25 @@ button, .tab, .trend-tab, .sheet-close { min-height: 44px; }
 @media (prefers-reduced-motion: reduce) {
   .skeleton-line { animation: none; }
   .trend-real-column { transition: none; }
+}
+
+/* Compact header and spacing; the 44px touch area includes padding. */
+.app-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.app-header .app-title { margin: 0; font-size: 25px; }
+.header-actions { display: flex; align-items: center; gap: 6px; }
+.header-actions button { margin: 0; padding: 7px 10px; border-radius: 12px; font-size: 13px; }
+.connection-toolbar { min-height: 18px; margin: 2px 0 8px; font-size: 11px; }
+.tabs { margin-bottom: 8px; }
+.tab, .trend-tab { height: 44px; padding: 6px 0; }
+.month-switcher { margin: 4px 0 8px; }
+.month-button { width: 44px; height: 44px; }
+.hero { padding: 15px; margin-bottom: 10px; }
+.hero .label { margin-bottom: 7px; }
+.hero .status { margin-top: 9px; padding: 8px 10px; font-size: 15px; }
+.mini-card { min-height: 0; }
+@media (max-width: 350px) {
+  .header-actions button { padding: 7px 8px; font-size: 12px; }
+  .app-header .app-title { font-size: 22px; }
 }
 
 </style>

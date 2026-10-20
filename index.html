@@ -10,20 +10,18 @@
 </head>
 
 <body>
+  <header class="app-header">
+    <div class="app-title">etsuran</div>
+    <div class="header-actions">
+      <button type="button" id="refreshDataButton" onclick="refreshVisibleData()">↻ 更新</button>
+      <button type="button" class="kakeiboLinkButton" onclick="openKakeibo()">✏️ kakeibo</button>
+    </div>
+  </header>
   <div class="connection-toolbar">
     <span id="connectionStatus" role="status" aria-live="polite"></span>
-    <button type="button" id="refreshDataButton" onclick="refreshVisibleData()">↻ 更新</button>
   </div>
 
   <div id="homeScreen">
-
-    <div class="headerRow">
-      <div class="app-title">etsuran</div>
-
-      <button type="button" class="kakeiboLinkButton" onclick="openKakeibo()">
-        ✏️ kakeibo
-      </button>
-    </div>
 
     <div class="tabs">
       <div class="tab" data-person="共通" onclick="changePerson('共通', this)">共通</div>
