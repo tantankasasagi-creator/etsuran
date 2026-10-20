@@ -6,6 +6,7 @@ const assert=require('node:assert/strict');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH || (fs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),args:['--no-sandbox']});
  const page=await browser.newPage({viewport:{width:390,height:844}});
+ await page.addInitScript(()=>Object.defineProperty(navigator,'connection',{configurable:true,value:{saveData:true,effectiveType:'4g'}}));
  const errors=[];const requests=[];let failing=false;
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://etsuran.test/**',r=>{const name=new URL(r.request().url()).pathname.slice(1)||'index.html';let body=fs.readFileSync(path.join(appRoot, name));if(process.env.GAS_PACKAGE==='1' && name==='index.html'){body=fs.readFileSync(path.join(appRoot,'gas','index.html'),'utf8').replace(/<\?!= include\('([^']+)'\); \?>/g,(_,file)=>fs.readFileSync(path.join(appRoot,'gas',file+'.html'),'utf8'));}return r.fulfill({body,contentType:name.endsWith('.js')?'application/javascript':name.endsWith('.css')?'text/css':'text/html'});});
@@ -115,12 +116,12 @@ const assert=require('node:assert/strict');
  let count=requests.length;await page.evaluate(()=>prefetchView('trend'));assert.equal(requests.length,count);
  await page.evaluate(()=>{Object.defineProperty(navigator,'connection',{configurable:true,value:{saveData:false,effectiveType:'2g'}});prefetchView('trend')});assert.equal(requests.length,count);
  await page.evaluate(()=>{Object.defineProperty(navigator,'connection',{configurable:true,value:{saveData:false,effectiveType:'4g'}});prefetchView('trend')});
- await page.waitForFunction(()=>activeApiRequests===0);
+ await page.waitForFunction(()=>activeApiRequests===0 && !prefetchRunning && prefetchQueue.size===0);
  assert.deepEqual(requests.slice(count).map(r=>r.action).sort(),['getCategoryFilterMaster','getMonthlyTrendData']);
  count=requests.length;await page.evaluate(()=>showTrendScreen());await page.waitForFunction(()=>activeApiRequests===0);assert.equal(requests.length,count);
  // Speculation failure does not replace a working screen with an error.
  await page.evaluate(()=>{invalidateApiCache();latestApiError=''});failing=true;
- await page.evaluate(()=>prefetchView('balance'));await page.waitForFunction(()=>activeApiRequests===0);
+ await page.evaluate(()=>prefetchView('balance'));await page.waitForFunction(()=>activeApiRequests===0 && !prefetchRunning && prefetchQueue.size===0);
  assert.equal(await page.evaluate(()=>latestApiError),'');failing=false;
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  assert.deepEqual(errors,[]);

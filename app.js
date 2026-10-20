@@ -124,6 +124,8 @@ function beginViewRequest(view) {
 
 function invalidateApiCache() {
   apiCacheGeneration++;
+  prefetchQueue.clear();
+  prefetchPlanKey = '';
   apiReadCache.clear();
   apiPendingReads.clear();
   apiReadStates.clear();
@@ -198,6 +200,7 @@ function callApi(action, params = {}, options = {}) {
       if (state.speculative) activeSpeculativeRequests--;
       updateConnectionStatus();
       if (apiPendingReads.get(key) === request) { apiPendingReads.delete(key); apiReadStates.delete(key); }
+      schedulePrefetchPump();
     });
   if (isRead) { apiPendingReads.set(key, request); apiReadStates.set(key, state); }
   return request;
@@ -250,27 +253,83 @@ function canPrefetch() {
     !(connection && (connection.saveData || /(^|-)2g$/.test(connection.effectiveType)));
 }
 
-let homePrefetchScheduled = false;
+const prefetchQueue = new Map();
+let prefetchRunning = false;
+let prefetchTimer = null;
+let prefetchPlanKey = '';
+let prefetchIdleAfter = 0;
+
+function schedulePrefetchPump(delay = 200) {
+  if (!prefetchQueue.size || prefetchTimer !== null) return;
+  prefetchTimer = setTimeout(function() {
+    prefetchTimer = null;
+    runNextPrefetch();
+  }, delay);
+}
+
+function enqueuePrefetch(action, params = {}, priority = false, id) {
+  const key = id || JSON.stringify([action, params]);
+  const job = { action, params, generation: apiCacheGeneration };
+  if (priority) {
+    const rest = [...prefetchQueue].filter(entry => entry[0] !== key);
+    prefetchQueue.clear();
+    prefetchQueue.set(key, job);
+    rest.forEach(entry => prefetchQueue.set(...entry));
+  } else if (!prefetchQueue.has(key)) prefetchQueue.set(key, job);
+}
+
+function runNextPrefetch() {
+  if (prefetchRunning || !canPrefetch() || budgetSavePending || activeApiRequests > 0) return;
+  const wait = prefetchIdleAfter - Date.now();
+  if (wait > 0) { schedulePrefetchPump(wait); return; }
+  while (prefetchQueue.size) {
+    const [key, job] = prefetchQueue.entries().next().value;
+    prefetchQueue.delete(key);
+    if (job.generation !== apiCacheGeneration) continue;
+    const params = typeof job.params === 'function' ? job.params() : job.params;
+    if (!params || getCachedApiData(job.action, params) !== undefined) continue;
+    prefetchRunning = true;
+    callApi(job.action, params, { speculative: true })
+      .catch(function() {})
+      .finally(function() { prefetchRunning = false; schedulePrefetchPump(); });
+    return;
+  }
+}
+
 function scheduleHomePrefetch() {
-  if (homePrefetchScheduled) return;
-  homePrefetchScheduled = true;
-  const generation = apiCacheGeneration;
-  setTimeout(function() {
-    if (!canPrefetch() || generation !== apiCacheGeneration || activeApiRequests > 0 ||
-        document.getElementById('homeScreen').classList.contains('hidden')) return;
-    // Only two read requests; no recurring polling or writes.
-    prefetchView('ranking');
-  }, 150);
+  const person = currentPerson || '共通';
+  const year = selectedYear, month = selectedMonth;
+  const plan = JSON.stringify([apiCacheGeneration, person, year, month]);
+  if (plan === prefetchPlanKey) return;
+  prefetchPlanKey = plan;
+  prefetchQueue.clear();
+  enqueuePrefetch('getCategoryFilterMaster');
+  enqueuePrefetch('getRankingData', { compact: true });
+  enqueuePrefetch('getMonthlyTrendData');
+  enqueuePrefetch('getBalanceData');
+  enqueuePrefetch('getCalendarData', function() {
+    const master = getCachedApiData('getCategoryFilterMaster') || categoryMasterCache;
+    if (!master) return null;
+    return { targetYear: year, targetMonth: month, selectedPerson: person,
+      selectedCategories: master.monthly.categories.concat(master.yearly.categories) };
+  }, false, 'calendar:' + plan);
+  enqueuePrefetch('getAssetData', { selectedPerson: person });
+  enqueuePrefetch('getBudgetData', { targetYear: year, targetMonth: month });
+  enqueuePrefetch('getMonthlyExpenseList', { targetYear: year, targetMonth: month, selectedPerson: person });
+  schedulePrefetchPump(150);
 }
 
 function prefetchView(view) {
-  if (!canPrefetch() || activeApiRequests > 0) return;
+  if (!canPrefetch()) return;
   const actions = {
     trend: ['getCategoryFilterMaster', 'getMonthlyTrendData'],
     ranking: ['getCategoryFilterMaster', 'getRankingData'],
     balance: ['getBalanceData']
   }[view] || [];
-  actions.forEach(action => callApi(action, action === 'getRankingData' ? { compact: true } : {}, { speculative: true }).catch(function() {}));
+  // Add in reverse so the first dependency stays first at the front of the queue.
+  actions.slice().reverse().forEach(action => enqueuePrefetch(action,
+    action === 'getRankingData' ? { compact: true } : {}, true));
+  schedulePrefetchPump();
 }
 
 // ======================================
@@ -521,6 +580,7 @@ function toggleSpecialMode() {
     specialDisplayMode === 'year' ? 'month' : 'year';
 
   renderSelectedPerson(currentPerson);
+  scheduleHomePrefetch();
 }
 
 // ======================================
@@ -1019,6 +1079,7 @@ function changePerson(person, element) {
 
   if (homeDataCache) {
     renderSelectedPerson(person);
+    scheduleHomePrefetch();
   } else {
     loadAllHomeData(person);
   }
@@ -3426,6 +3487,19 @@ function enhanceControls(root) {
     control.setAttribute('role', 'button');
     control.tabIndex = 0;
   });
+}
+// Pause the queue between requests while the user is interacting; an in-flight
+// GAS read is allowed to finish because aborting HTTP does not stop server work.
+['pointerdown', 'keydown', 'touchstart'].forEach(function(event) {
+  document.addEventListener(event, function() {
+    prefetchIdleAfter = Date.now() + 600;
+    schedulePrefetchPump(650);
+  }, { passive: true });
+});
+document.addEventListener('visibilitychange', () => schedulePrefetchPump());
+window.addEventListener('online', () => schedulePrefetchPump());
+if (navigator.connection && navigator.connection.addEventListener) {
+  navigator.connection.addEventListener('change', () => schedulePrefetchPump());
 }
 enhanceControls(document);
 document.querySelectorAll('[data-prefetch]').forEach(function(control) {
