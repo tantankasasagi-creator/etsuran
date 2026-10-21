@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const source = fs.readFileSync(path.join(__dirname, '..', 'gas', 'Code.gs'), 'utf8');
 const context = vm.createContext({ Date });
 vm.runInContext(source, context);
+vm.runInContext('viewerRequestAuthorized_ = true', context);
 const run = expression => vm.runInContext(expression, context);
 let checks = 0;
 // Keep the existing single-month calculator as the reference: it is also used

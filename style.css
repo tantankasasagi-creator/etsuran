@@ -1836,3 +1836,14 @@ button, .tab, .trend-tab, .sheet-close { box-sizing: border-box; min-height: 44p
   .header-actions button { padding: 7px 8px; font-size: 12px; }
   .app-header .app-title { font-size: 22px; }
 }
+
+.auth-shell { display: none; max-width: 360px; margin: 12vh auto; padding: 22px; border-radius: 18px; background: #fff; box-sizing: border-box; }
+body[data-locked] > :not(.auth-shell):not(script) { display: none !important; }
+body[data-locked] > .auth-shell { display: block; }
+.auth-shell h1 { margin: 0 0 16px; }
+.auth-shell label { display: block; margin: 18px 0 6px; }
+.auth-shell input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px; border: 1px solid #ccd6cc; border-radius: 10px; font-size: 16px; }
+.auth-shell button { width: 100%; margin-top: 14px; padding: 10px; border: 0; border-radius: 10px; background: #5f8f6a; color: #fff; font-size: 16px; }
+#viewerAuthMessage { color: #a34132; font-size: 13px; overflow-wrap: anywhere; }
+.lock-button { font-size: 11px !important; padding-inline: 6px !important; }
+@media (max-width: 350px) { .header-actions { gap: 3px; } .app-header .app-title { font-size: 20px; } }

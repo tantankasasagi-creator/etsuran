@@ -6,6 +6,7 @@ const assert=require('node:assert/strict');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH || (fs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),args:['--no-sandbox']});
  const page=await browser.newPage({viewport:{width:390,height:844}});
+ await page.addInitScript(()=>sessionStorage.setItem('etsuranViewerToken','test-access-code-only'));
  await page.addInitScript(()=>Object.defineProperty(navigator,'connection',{configurable:true,value:{saveData:true,effectiveType:'4g'}}));
  const errors=[];const requests=[];let failing=false;
  page.on('pageerror',e=>errors.push(e.message));
@@ -16,6 +17,7 @@ const assert=require('node:assert/strict');
   if(failing)return route.fulfill({status:503,body:'Unavailable'});
   const now=new Date();const year=now.getFullYear(),month=now.getMonth();
   let data={};
+  if(action==='getViewerAccess')data={authorized:true};
   if(action==='getAllHomeData') data={homeData:{[year+'-'+month]:Object.fromEntries(['共通','くる','ぐんま','合計'].map(p=>[p,{monthBudgetCalculated:false,dailyTotal:1000,allTotal:2000}]))},monthBounds:{minYear:year,minMonth:0,maxYear:year,maxMonth:11}};
   if(action==='getCategoryFilterMaster')data={fixed:{categories:[]},monthly:{categories:['食費']},yearly:{categories:['旅行']}};
   if(action==='getAssetData')data={summary:{targetLabel:'今月',total:100,monthDiff:0,yearDiff:0},details:[],trend:[]};

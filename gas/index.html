@@ -10,10 +10,21 @@
 
 </head>
 
-<body>
+<body data-locked>
+  <section class="auth-shell" aria-label="etsuranの認証">
+    <h1>etsuran</h1>
+    <p>アクセスコードを入力してください。</p>
+    <form id="viewerLoginForm">
+      <label for="viewerPassword">アクセスコード</label>
+      <input id="viewerPassword" type="password" autocomplete="current-password" required>
+      <button id="viewerLoginButton" type="submit">開く</button>
+      <p id="viewerAuthMessage" role="status" aria-live="polite"></p>
+    </form>
+  </section>
   <header class="app-header">
     <div class="app-title">etsuran</div>
     <div class="header-actions">
+      <button type="button" class="lock-button" onclick="lockViewerAccess()">ロック</button>
       <button type="button" id="refreshDataButton" onclick="refreshVisibleData()">↻ 更新</button>
       <button type="button" class="kakeiboLinkButton" onclick="openKakeibo()">✏️ kakeibo</button>
     </div>

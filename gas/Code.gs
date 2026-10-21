@@ -48,7 +48,35 @@ function include(filename) {
 // ホーム画面
 // ======================================
 
+let viewerRequestAuthorized_ = false;
+
+function requireViewerAccess_() {
+  if (!viewerRequestAuthorized_) {
+    const error = new Error('認証が必要です。');
+    error.code = 'AUTH_REQUIRED';
+    throw error;
+  }
+}
+
+function verifyViewerToken_(provided) {
+  const expected = PropertiesService.getScriptProperties().getProperty('ETSURAN_ACCESS_TOKEN');
+  if (!expected || expected.length < 16) {
+    const error = new Error('GASのスクリプトプロパティにETSURAN_ACCESS_TOKEN（16文字以上）を設定してください。');
+    error.code = 'AUTH_NOT_CONFIGURED';
+    throw error;
+  }
+  const value = typeof provided === 'string' ? provided : '';
+  let difference = expected.length ^ value.length;
+  for (let i = 0; i < expected.length; i++) difference |= expected.charCodeAt(i) ^ (value.charCodeAt(i) || 0);
+  if (difference !== 0) {
+    const error = new Error('アクセスコードを確認してください。');
+    error.code = 'AUTH_REQUIRED';
+    throw error;
+  }
+}
+
 function getAllHomeData() {
+  requireViewerAccess_();
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const data = loadAllData(ss);
 
@@ -399,6 +427,7 @@ function buildCategoryMap(categoryValues) {
 }
 
 function getCategoryFilterMaster() {
+  requireViewerAccess_();
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
   const values =
@@ -689,6 +718,7 @@ function getHomeMonthBounds(inputValues, monthlyBudgetHistoryValues) {
 // ======================================
 
 function getAssetData(selectedPerson) {
+  requireViewerAccess_();
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const values = ss.getSheetByName(SHEET_NAMES.asset).getDataRange().getValues();
 
@@ -806,6 +836,7 @@ function getAssetData(selectedPerson) {
 // ======================================
 
 function getMonthlyExpenseList(targetYear, targetMonth, selectedPerson) {
+  requireViewerAccess_();
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const data = loadCalendarSourceData(ss);
   const categoryMap = buildCategoryMap(data.categoryValues);
@@ -866,6 +897,7 @@ function getMonthlyExpenseList(targetYear, targetMonth, selectedPerson) {
 
 
 function getCalendarData(targetYear, targetMonth, selectedPerson, selectedCategories) {
+  requireViewerAccess_();
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const data = loadCalendarSourceData(ss);
 
@@ -1047,6 +1079,7 @@ function findMonthItem(months, date) {
 }
 
 function getBalanceData() {
+  requireViewerAccess_();
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const data = loadCalendarSourceData(ss);
   const categoryMap = buildCategoryMap(data.categoryValues);
@@ -1101,6 +1134,7 @@ function getBalanceData() {
 }
 
 function getRankingData(compact) {
+  requireViewerAccess_();
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const data = loadCalendarSourceData(ss);
   const categoryMap = buildCategoryMap(data.categoryValues);
@@ -1209,6 +1243,7 @@ function sortRankingResult(result) {
 }
 
 function getMonthlyTrendData() {
+  requireViewerAccess_();
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const data = loadCalendarSourceData(ss);
   data.budgetValues = ss.getSheetByName(SHEET_NAMES.budgetMaster).getDataRange().getValues();
@@ -1326,9 +1361,12 @@ function addTrendAmount(months, date, type, amount, category) {
 }
 
 function doPost(e) {
+  viewerRequestAuthorized_ = false;
   try {
 
     const request = JSON.parse(e.postData.contents);
+    verifyViewerToken_(request.authToken);
+    viewerRequestAuthorized_ = true;
 
     const action = request.action;
     const params = request.params || {};
@@ -1336,6 +1374,9 @@ function doPost(e) {
     let result;
 
     switch (action) {
+      case 'getViewerAccess':
+        result = { authorized: true };
+        break;
 
       case 'getAllHomeData':
         result = getAllHomeData();
@@ -1409,10 +1450,13 @@ function doPost(e) {
       .createTextOutput(
         JSON.stringify({
           success: false,
+          code: error.code || 'API_ERROR',
           message: error.message
         })
       )
       .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    viewerRequestAuthorized_ = false;
   }
 }
 
@@ -1450,6 +1494,7 @@ function buildBudgetPersonView(person, baseBudget, history, sourceMonthKey, targ
 }
 
 function getBudgetData(targetYear, targetMonth) {
+  requireViewerAccess_();
   targetYear = Number(targetYear);
   targetMonth = Number(targetMonth);
 
@@ -1503,6 +1548,7 @@ function getBudgetData(targetYear, targetMonth) {
 }
 
 function upsertMonthlyBudget(targetYear, targetMonth, selectedPerson) {
+  requireViewerAccess_();
   targetYear = Number(targetYear);
   targetMonth = Number(targetMonth);
 

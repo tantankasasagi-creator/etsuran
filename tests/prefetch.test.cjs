@@ -4,6 +4,7 @@ const root = path.resolve(__dirname, '..');
 (async () => {
  const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || (fs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined), args: ['--no-sandbox'] });
  const page = await browser.newPage();
+ await page.addInitScript(()=>sessionStorage.setItem('etsuranViewerToken','test-access-code-only'));
  const requests = [], errors = []; let inFlight = 0, peak = 0, balanceDelay = 80;
  page.on('pageerror', error => errors.push(error.message));
  await page.route('https://etsuran.test/**', route => {
@@ -16,6 +17,7 @@ const root = path.resolve(__dirname, '..');
    const record = { action, params, start: Date.now() }; requests.push(record); peak = Math.max(peak, ++inFlight);
    await new Promise(resolve => setTimeout(resolve, action === 'getBalanceData' ? balanceDelay : 80));
    let data = {};
+   if (action === 'getViewerAccess') data = {authorized:true};
    if (action === 'getAllHomeData') { const now = new Date(); data = { homeData: {}, monthBounds: { minYear: now.getFullYear(), maxYear: now.getFullYear(), minMonth: 0, maxMonth: 11 } }; }
    if (action === 'getCategoryFilterMaster') data = { fixed: { categories: [] }, monthly: { categories: ['食費'] }, yearly: { categories: ['旅行'] } };
    if (action === 'getRankingData') data = { all: { '共通': [] }, currentYearNumber: 2026, currentMonthNumber: 9 };
@@ -25,7 +27,7 @@ const root = path.resolve(__dirname, '..');
  });
  await page.goto('https://etsuran.test/');
  await page.waitForFunction(() => prefetchPlanKey !== '' && prefetchQueue.size === 0 && !prefetchRunning && activeApiRequests === 0);
- assert.deepEqual(requests.map(r => r.action), ['getAllHomeData','getCategoryFilterMaster','getRankingData','getMonthlyTrendData','getBalanceData','getCalendarData','getAssetData','getBudgetData','getMonthlyExpenseList']);
+ assert.deepEqual(requests.map(r => r.action), ['getViewerAccess','getAllHomeData','getCategoryFilterMaster','getRankingData','getMonthlyTrendData','getBalanceData','getCalendarData','getAssetData','getBudgetData','getMonthlyExpenseList']);
  assert.equal(peak, 1, 'background sequence never runs concurrent reads');
  const calendar = requests.find(r => r.action === 'getCalendarData');
  assert.deepEqual(calendar.params.selectedCategories, ['食費','旅行']);

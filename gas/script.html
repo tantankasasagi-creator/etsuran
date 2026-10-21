@@ -1,4 +1,5 @@
 <script>
+let viewerAccessToken = '';
 
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbyLL7ZKPhH_XIHJh_zsCfaWrkTmbsCwC0WekUxpjBI_gcB2TLpnpYpnHHCYH0XuofiN1w/exec';
@@ -172,14 +173,18 @@ function callApi(action, params = {}, options = {}) {
   const request = fetch(API_URL, {
     method: 'POST',
     signal: controller.signal,
-    body: JSON.stringify({ action, params })
+    body: JSON.stringify({ action, params, authToken: viewerAccessToken })
   })
     .then(function(response) {
       if (!response.ok) throw new Error('通信に失敗しました（HTTP ' + response.status + '）');
       return response.json();
     })
     .then(function(result) {
-      if (!result.success) throw new Error(result.message || 'APIエラー');
+      if (!result.success) {
+        const error = new Error(result.message || 'APIエラー');
+        error.code = result.code;
+        throw error;
+      }
       if (isRead && generation === apiCacheGeneration) {
         apiReadCache.delete(key);
         apiReadCache.set(key, { time: Date.now(), data: result.data });
@@ -191,6 +196,7 @@ function callApi(action, params = {}, options = {}) {
       return result.data;
     })
     .catch(function(error) {
+      if (error.code === 'AUTH_REQUIRED') lockViewerAccess(error.message);
       if (error.name === 'AbortError') error = new Error('通信がタイムアウトしました。もう一度お試しください');
       if (!state.speculative) latestApiError = '取得できませんでした。「更新」で再試行できます';
       throw error;
@@ -250,7 +256,7 @@ function showErrorState(element, error, retry) {
 
 function canPrefetch() {
   const connection = navigator.connection;
-  return document.visibilityState === 'visible' && navigator.onLine !== false &&
+  return !!viewerAccessToken && !document.body.hasAttribute('data-locked') && document.visibilityState === 'visible' && navigator.onLine !== false &&
     !(connection && (connection.saveData || /(^|-)2g$/.test(connection.effectiveType)));
 }
 
@@ -3520,9 +3526,44 @@ document.querySelectorAll('[data-prefetch]').forEach(function(control) {
     () => prefetchView(control.dataset.prefetch), { passive: true }));
 });
 
-initializePerson();
+function lockViewerAccess(message = '') {
+  viewerAccessToken = '';
+  try { sessionStorage.removeItem('etsuranViewerToken'); } catch (_) {}
+  invalidateApiCache();
+  document.body.setAttribute('data-locked', '');
+  document.getElementById('viewerPassword').value = '';
+  document.getElementById('viewerAuthMessage').textContent = message;
+}
 
+async function unlockViewerAccess(event) {
+  if (event) event.preventDefault();
+  const input = document.getElementById('viewerPassword');
+  const button = document.getElementById('viewerLoginButton');
+  const message = document.getElementById('viewerAuthMessage');
+  if (button.disabled) return;
+  viewerAccessToken = input.value;
+  if (!viewerAccessToken) return;
+  invalidateApiCache();
+  button.disabled = true;
+  message.textContent = '確認中…';
+  try {
+    const result = await callApi('getViewerAccess');
+    if (result.authorized !== true) throw new Error('認証を確認できませんでした。');
+    try { sessionStorage.setItem('etsuranViewerToken', viewerAccessToken); } catch (_) {}
+    input.value = '';
+    message.textContent = '';
+    hideAllScreens();
+    document.getElementById('homeScreen').classList.remove('hidden');
+    initializePerson();
+    document.body.removeAttribute('data-locked');
+  } catch (error) {
+    lockViewerAccess(error.message.startsWith('Unknown action:')
+      ? '先にGASの認証対応版を反映し、アクセスコードを設定してください。' : error.message);
+  } finally { button.disabled = false; }
+}
 
-
+document.getElementById('viewerLoginForm').addEventListener('submit', unlockViewerAccess);
+try { document.getElementById('viewerPassword').value = sessionStorage.getItem('etsuranViewerToken') || ''; } catch (_) {}
+if (document.getElementById('viewerPassword').value) unlockViewerAccess();
 
 </script>

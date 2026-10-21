@@ -12,6 +12,7 @@ const input = [['date', 'person', 'category', 'memo', 'amount']];
 const tables = { '入力データ': input, 'カテゴリマスタ': [['category', 'type'], ['食費', '月予算'], ['旅行', '年予算'], ['家賃', '固定費'], ['給与', '収入']] };
 const ctx = vm.createContext({ Date, SpreadsheetApp: { openById: () => ({ getSheetByName: name => ({ getDataRange: () => ({ getValues: () => tables[name] }) }) }) }, Utilities: { formatDate: date => { formatCalls++; return `${date.getMonth()+1}/${date.getDate()}`; } } });
 vm.runInContext(source + '\n' + reference + '\n' + normalizer, ctx);
+vm.runInContext('viewerRequestAuthorized_ = true', ctx);
 const read = expression => JSON.parse(vm.runInContext(`JSON.stringify(${expression})`, ctx));
 for (let i = 0; i < 6000; i++) input.push([new Date(2025 + i % 2, Math.floor(i/2) % 12, 1 + i % 27), ['共通', 'くる', 'ぐんま', '合計', '不明'][i % 5], ['食費', '旅行', '家賃', '給与'][i % 4], i % 7 === 0 ? '共通繰入' : 'memo', i % 19 === 0 ? 0 : i % 17 === 0 ? -100 : 100 + i % 50]);
 const expected = read('getRankingDataReference()'); const originalCalls = formatCalls;

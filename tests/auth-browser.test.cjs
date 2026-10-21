@@ -1,0 +1,24 @@
+const {chromium}=require('playwright'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH||(fs.existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:390,height:844}});const requests=[],errors=[];let apiReady=true;
+page.on('pageerror',e=>errors.push(e.message));
+await page.route('https://etsuran.test/**',r=>{const name=new URL(r.request().url()).pathname.slice(1)||'index.html';return r.fulfill({body:fs.readFileSync(path.join(__dirname,'..',name)),contentType:name.endsWith('.js')?'application/javascript':name.endsWith('.css')?'text/css':'text/html'})});
+await page.route('https://script.google.com/**',r=>{const q=r.request().postDataJSON();requests.push(q.action);let result;
+ if(!apiReady)result={success:false,message:'Unknown action: getViewerAccess'};
+ else if(q.authToken!=='private-test-password-only')result={success:false,code:'AUTH_REQUIRED',message:'アクセスコードを確認してください。'};
+ else if(q.action==='getViewerAccess')result={success:true,data:{authorized:true}};
+ else if(q.action==='getAllHomeData'){const d=new Date();result={success:true,data:{homeData:{},monthBounds:{minYear:d.getFullYear(),maxYear:d.getFullYear(),minMonth:0,maxMonth:11}}}}
+ else result={success:true,data:{}};
+ return r.fulfill({json:result});});
+await page.goto('https://etsuran.test/');await page.waitForTimeout(250);
+assert.equal(requests.length,0,'locked page must not fetch any household data');
+assert.equal(await page.locator('#homeScreen').isVisible(),false);
+await page.fill('#viewerPassword','wrong');await page.click('#viewerLoginButton');await page.waitForFunction(()=>!document.getElementById('viewerLoginButton').disabled);
+assert.deepEqual(requests,['getViewerAccess']);assert.equal(await page.locator('#homeScreen').isVisible(),false);
+await page.fill('#viewerPassword','private-test-password-only');await page.click('#viewerLoginButton');await page.waitForFunction(()=>!document.body.hasAttribute('data-locked')&&activeApiRequests===0);
+assert.equal(await page.locator('#homeScreen').isVisible(),true);
+await page.click('.lock-button');assert.equal(await page.locator('#homeScreen').isVisible(),false);
+assert.equal(await page.evaluate(()=>sessionStorage.getItem('etsuranViewerToken')),null);
+apiReady=false;await page.fill('#viewerPassword','private-test-password-only');await page.click('#viewerLoginButton');await page.waitForFunction(()=>!document.getElementById('viewerLoginButton').disabled);
+assert.match(await page.locator('#viewerAuthMessage').innerText(),/GASの認証対応版/);
+assert.equal(await page.locator('#homeScreen').isVisible(),false,'old public API cannot unlock the site');
+assert.deepEqual(errors,[]);console.log('PASS: locked by default, no initial data requests, wrong code rejected, login/logout, session cleared, old API fails closed.');await browser.close();})().catch(e=>{console.error(e);process.exit(1)});
