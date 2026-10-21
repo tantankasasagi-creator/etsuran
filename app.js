@@ -3525,9 +3525,12 @@ document.querySelectorAll('[data-prefetch]').forEach(function(control) {
     () => prefetchView(control.dataset.prefetch), { passive: true }));
 });
 
-function lockViewerAccess(message = '') {
+function lockViewerAccess(message = '', forgetRemembered = true) {
   viewerAccessToken = '';
   try { sessionStorage.removeItem('etsuranViewerToken'); } catch (_) {}
+  if (forgetRemembered) {
+    try { localStorage.removeItem('etsuranViewerToken'); } catch (_) {}
+  }
   invalidateApiCache();
   document.body.setAttribute('data-locked', '');
   document.getElementById('viewerPassword').value = '';
@@ -3549,6 +3552,13 @@ async function unlockViewerAccess(event) {
     const result = await callApi('getViewerAccess');
     if (result.authorized !== true) throw new Error('認証を確認できませんでした。');
     try { sessionStorage.setItem('etsuranViewerToken', viewerAccessToken); } catch (_) {}
+    try {
+      if (document.getElementById('viewerRemember').checked) {
+        localStorage.setItem('etsuranViewerToken', viewerAccessToken);
+      } else {
+        localStorage.removeItem('etsuranViewerToken');
+      }
+    } catch (_) {}
     input.value = '';
     message.textContent = '';
     hideAllScreens();
@@ -3557,10 +3567,18 @@ async function unlockViewerAccess(event) {
     document.body.removeAttribute('data-locked');
   } catch (error) {
     lockViewerAccess(error.message.startsWith('Unknown action:')
-      ? '先にGASの認証対応版を反映し、アクセスコードを設定してください。' : error.message);
+      ? '先にGASの認証対応版を反映し、アクセスコードを設定してください。' : error.message,
+      error.code === 'AUTH_REQUIRED' || error.code === 'AUTH_NOT_CONFIGURED' || error.message.startsWith('Unknown action:'));
   } finally { button.disabled = false; }
 }
 
 document.getElementById('viewerLoginForm').addEventListener('submit', unlockViewerAccess);
-try { document.getElementById('viewerPassword').value = sessionStorage.getItem('etsuranViewerToken') || ''; } catch (_) {}
+let savedViewerToken = '', rememberedViewerToken = '';
+try { savedViewerToken = sessionStorage.getItem('etsuranViewerToken') || ''; } catch (_) {}
+try { rememberedViewerToken = localStorage.getItem('etsuranViewerToken') || ''; } catch (_) {}
+document.getElementById('viewerRemember').checked = !!rememberedViewerToken;
+document.getElementById('viewerPassword').value = savedViewerToken || rememberedViewerToken;
+window.addEventListener('storage', function(event) {
+  if (event.key === 'etsuranViewerToken' && event.newValue === null) lockViewerAccess();
+});
 if (document.getElementById('viewerPassword').value) unlockViewerAccess();

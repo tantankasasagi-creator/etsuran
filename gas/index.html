@@ -17,6 +17,10 @@
     <form id="viewerLoginForm">
       <label for="viewerPassword">アクセスコード</label>
       <input id="viewerPassword" type="password" autocomplete="current-password" required>
+      <label class="remember-login" for="viewerRemember">
+        <input id="viewerRemember" type="checkbox">
+        <span>この端末でログインを保持する</span>
+      </label>
       <button id="viewerLoginButton" type="submit">開く</button>
       <p id="viewerAuthMessage" role="status" aria-live="polite"></p>
     </form>
