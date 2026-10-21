@@ -343,20 +343,9 @@ function prefetchView(view) {
 // ======================================
 
 function openKakeibo() {
-  let target = '';
-  try { target = localStorage.getItem('etsuranKakeiboUrl') || ''; } catch (_) {}
-  if (!target) {
-    target = window.prompt('kakeiboの接続URLを入力してください。このブラウザにだけ保存します。', '');
-    if (!target) return;
-  }
-  let url;
-  try { url = new URL(target.trim()); } catch (_) {}
-  if (!url || url.origin !== 'https://kakeibo-auu.pages.dev' || url.pathname !== '/connected.html' || !url.hash.startsWith('#key=')) {
-    alert('kakeiboの接続URLを入力してください（connected.html#key=…）。');
-    return;
-  }
-  try { localStorage.setItem('etsuranKakeiboUrl', url.href); } catch (_) {}
-  window.location.href = url.href;
+  // Connection credentials are managed by kakeibo, never embedded in this site.
+  try { localStorage.removeItem('etsuranKakeiboUrl'); } catch (_) {}
+  window.location.href = 'https://kakeibo-auu.pages.dev/connected.html';
 }
 
     function formatMoney(value) {
