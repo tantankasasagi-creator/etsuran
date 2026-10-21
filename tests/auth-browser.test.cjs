@@ -11,6 +11,7 @@ await page.context().route('https://script.google.com/**',r=>{const q=r.request(
  return r.fulfill({json:result});});
 await page.goto('https://etsuran.test/');await page.waitForTimeout(250);
 assert.equal(requests.length,0,'locked page must not fetch any household data');
+assert.equal(await page.locator('.lock-button').count(),0,'no manual lock button');
 assert.equal(await page.locator('#homeScreen').isVisible(),false);
 await page.fill('#viewerPassword','wrong');await page.click('#viewerLoginButton');await page.waitForFunction(()=>!document.getElementById('viewerLoginButton').disabled);
 assert.deepEqual(requests,['getViewerAccess']);assert.equal(await page.locator('#homeScreen').isVisible(),false);
@@ -21,7 +22,7 @@ const sessionOnlyTab=await page.context().newPage();
 await sessionOnlyTab.goto('https://etsuran.test/');
 assert.equal(await sessionOnlyTab.locator('#homeScreen').isVisible(),false,'session-only login is not restored in another tab');
 await sessionOnlyTab.close();
-await page.click('.lock-button');assert.equal(await page.locator('#homeScreen').isVisible(),false);
+await page.evaluate(()=>lockViewerAccess());assert.equal(await page.locator('#homeScreen').isVisible(),false);
 assert.equal(await page.evaluate(()=>sessionStorage.getItem('etsuranViewerToken')),null);
 await page.check('#viewerRemember');
 await page.fill('#viewerPassword','private-test-password-only');await page.click('#viewerLoginButton');
@@ -30,7 +31,7 @@ assert.equal(await page.evaluate(()=>localStorage.getItem('etsuranViewerToken'))
 const rememberedTab=await page.context().newPage();await rememberedTab.goto('https://etsuran.test/');
 await rememberedTab.waitForFunction(()=>!document.body.hasAttribute('data-locked')&&activeApiRequests===0);
 assert.equal(await rememberedTab.locator('#viewerRemember').isChecked(),true);
-await rememberedTab.click('.lock-button');
+await rememberedTab.evaluate(()=>lockViewerAccess());
 await page.waitForFunction(()=>document.body.hasAttribute('data-locked'));
 assert.equal(await page.evaluate(()=>localStorage.getItem('etsuranViewerToken')),null,'lock clears persistent login and locks other tabs');
 await rememberedTab.close();
