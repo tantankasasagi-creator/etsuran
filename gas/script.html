@@ -337,9 +337,21 @@ function prefetchView(view) {
 // 共通処理
 // ======================================
 
-function openKakeibo(){
-  window.location.href =
-    "https://script.google.com/macros/s/AKfycbxeMor57OdXyu96EhZLmlIttYje5BwxW-OwC7Jm_5zUVyOW9EdwTsI8VNizWZvwMb0UFA/exec";
+function openKakeibo() {
+  let target = '';
+  try { target = localStorage.getItem('etsuranKakeiboUrl') || ''; } catch (_) {}
+  if (!target) {
+    target = window.prompt('kakeiboの接続URLを入力してください。このブラウザにだけ保存します。', '');
+    if (!target) return;
+  }
+  let url;
+  try { url = new URL(target.trim()); } catch (_) {}
+  if (!url || url.origin !== 'https://kakeibo-auu.pages.dev' || url.pathname !== '/connected.html' || !url.hash.startsWith('#key=')) {
+    alert('kakeiboの接続URLを入力してください（connected.html#key=…）。');
+    return;
+  }
+  try { localStorage.setItem('etsuranKakeiboUrl', url.href); } catch (_) {}
+  window.location.href = url.href;
 }
 
     function formatMoney(value) {
