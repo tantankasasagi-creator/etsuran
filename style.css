@@ -1849,3 +1849,14 @@ body[data-locked] > .auth-shell { display: block; }
 
 .auth-shell .remember-login { display: flex; align-items: center; gap: 9px; margin: 14px 0 0; min-height: 44px; font-size: 14px; cursor: pointer; }
 .auth-shell .remember-login input { flex: 0 0 20px; width: 20px; height: 20px; min-height: 20px; margin: 0; accent-color: #5f8f6a; }
+
+.connection-dialog { box-sizing: border-box; width: min(420px, calc(100% - 28px)); padding: 22px; border: 0; border-radius: 18px; background: #fff; color: #2f3437; }
+.connection-dialog::backdrop { background: rgba(0, 0, 0, .35); }
+.connection-dialog h2 { margin: 0 0 12px; font-size: 21px; }
+.connection-dialog p { font-size: 14px; line-height: 1.6; }
+.connection-dialog label { display: block; margin: 16px 0 6px; }
+.connection-dialog input { box-sizing: border-box; width: 100%; min-height: 44px; border: 1px solid #ccd6cc; border-radius: 10px; padding: 10px; font-size: 16px; }
+.connection-hint { color: #68756c; font-size: 12px !important; }
+#kakeiboConnectionError { color: #a34132; }
+.connection-dialog-actions { display: flex; gap: 10px; }
+.connection-dialog-actions button { flex: 1; width: auto; padding: 10px; margin: 0; border: 1px solid #d7dfd8; border-radius: 10px; color: #42694b; background: #f4faf2; }

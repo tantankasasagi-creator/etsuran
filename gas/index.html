@@ -25,6 +25,20 @@
       <p id="viewerAuthMessage" role="status" aria-live="polite"></p>
     </form>
   </section>
+  <dialog id="kakeiboConnectionDialog" class="connection-dialog" aria-labelledby="kakeiboConnectionTitle">
+    <form id="kakeiboConnectionForm">
+      <h2 id="kakeiboConnectionTitle">kakeiboへの接続</h2>
+      <p>kakeiboの「専用URL」を貼り付けてください。etsuranのアクセスコードとは別です。</p>
+      <label for="kakeiboConnectionUrl">専用URL</label>
+      <input id="kakeiboConnectionUrl" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" required>
+      <p class="connection-hint">このブラウザにだけ保存し、次回からそのまま開きます。公開コードには含めません。</p>
+      <p id="kakeiboConnectionError" role="alert"></p>
+      <div class="connection-dialog-actions">
+        <button type="button" onclick="document.getElementById('kakeiboConnectionDialog').close()">キャンセル</button>
+        <button type="submit">保存して開く</button>
+      </div>
+    </form>
+  </dialog>
   <header class="app-header">
     <div class="app-title">etsuran</div>
     <div class="header-actions">

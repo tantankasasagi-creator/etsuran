@@ -343,10 +343,43 @@ function prefetchView(view) {
 // 共通処理
 // ======================================
 
+function normalizeKakeiboUrl(value) {
+  let url;
+  const text = String(value || '').trim();
+  try { url = new URL(text.startsWith('kakeibo-auu.pages.dev/') ? 'https://' + text : text); } catch (_) { return null; }
+  if (url.origin !== 'https://kakeibo-auu.pages.dev' || url.username || url.password ||
+      !['/', '/connected', '/connected/', '/connected.html'].includes(url.pathname)) return null;
+  const key = new URLSearchParams(url.hash.slice(1)).get('key') || url.searchParams.get('key');
+  if (!key || /\s/.test(key)) return null;
+  url.pathname = '/connected.html';
+  url.search = '';
+  url.hash = new URLSearchParams({ key }).toString();
+  return url.href;
+}
+
 function openKakeibo() {
-  // Connection credentials are managed by kakeibo, never embedded in this site.
+  let saved = '';
+  try { saved = localStorage.getItem('etsuranKakeiboUrl') || ''; } catch (_) {}
+  const target = normalizeKakeiboUrl(saved);
+  if (target) { window.location.href = target; return; }
   try { localStorage.removeItem('etsuranKakeiboUrl'); } catch (_) {}
-  window.location.href = 'https://kakeibo-auu.pages.dev/connected.html';
+  document.getElementById('kakeiboConnectionError').textContent = '';
+  document.getElementById('kakeiboConnectionUrl').value = '';
+  document.getElementById('kakeiboConnectionDialog').showModal();
+}
+
+function connectKakeibo(event) {
+  event.preventDefault();
+  const target = normalizeKakeiboUrl(document.getElementById('kakeiboConnectionUrl').value);
+  if (!target) {
+    document.getElementById('kakeiboConnectionError').textContent =
+      'kakeiboの専用URLを貼り付けてください。URLの末尾に「#key=…」が付いています。';
+    return;
+  }
+  try { localStorage.setItem('etsuranKakeiboUrl', target); } catch (_) {}
+  document.getElementById('kakeiboConnectionUrl').value = '';
+  document.getElementById('kakeiboConnectionDialog').close();
+  window.location.href = target;
 }
 
     function formatMoney(value) {
@@ -3516,6 +3549,8 @@ document.querySelectorAll('[data-prefetch]').forEach(function(control) {
 });
 
 function lockViewerAccess(message = '', forgetRemembered = true) {
+  const connectionDialog = document.getElementById('kakeiboConnectionDialog');
+  if (connectionDialog && connectionDialog.open) connectionDialog.close();
   viewerAccessToken = '';
   try { sessionStorage.removeItem('etsuranViewerToken'); } catch (_) {}
   if (forgetRemembered) {
@@ -3562,6 +3597,7 @@ async function unlockViewerAccess(event) {
   } finally { button.disabled = false; }
 }
 
+document.getElementById('kakeiboConnectionForm').addEventListener('submit', connectKakeibo);
 document.getElementById('viewerLoginForm').addEventListener('submit', unlockViewerAccess);
 let savedViewerToken = '', rememberedViewerToken = '';
 try { savedViewerToken = sessionStorage.getItem('etsuranViewerToken') || ''; } catch (_) {}
