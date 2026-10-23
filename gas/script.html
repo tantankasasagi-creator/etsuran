@@ -1432,7 +1432,7 @@ if (!categoryMasterCache) {
   getCategoryFilterMasterApi()
   .then(function(master) {
     categoryMasterCache = master;
-    trendSelectedCategories = categoryMasterCache.monthly.categories.slice();
+    trendSelectedCategories = categoryMasterCache.monthly.categories.concat(categoryMasterCache.yearly.categories);
     if (!document.getElementById('trendScreen').classList.contains('hidden')) showTrendScreen(person);
   })
   .catch(function(error) {
@@ -1443,7 +1443,7 @@ if (!categoryMasterCache) {
 }
 
 if (trendSelectedCategories.length === 0) {
-  trendSelectedCategories = categoryMasterCache.monthly.categories.slice();
+  trendSelectedCategories = categoryMasterCache.monthly.categories.concat(categoryMasterCache.yearly.categories);
 }
 
 const trendButton =
@@ -1498,8 +1498,10 @@ function renderTrendChart() {
   const maxValue = Math.max(0, ...data.map(item => item.total),
     ...(isMonthlyOnlySelected ? data.map(item => Number(item.monthBudget) || 0) : []));
   const scaleMax = getNiceScaleMax(maxValue);
-  const chartHeight = 220;
+  const chartHeight = 152;
   chart.dataset.scaleMax = scaleMax;
+  chart.dataset.chartHeight = chartHeight;
+  chart.style.setProperty('--trend-chart-height', chartHeight + 'px');
   const chosen = data.find(item => item.year === selectedTrendYear && item.month === selectedTrendMonth) || data[data.length - 1];
   const budgetLine = isMonthlyOnlySelected ? Number(chosen.monthBudget) : null;
 
@@ -1545,7 +1547,7 @@ if (budgetLine) {
     '</div>';
 }
 
-  html += '<div class="trend-real-chart">';
+  html += '<div class="trend-real-chart" style="--trend-count:' + data.length + '">';
 
   data.forEach(function(item) {
     const isSelected =
@@ -1591,9 +1593,8 @@ if (budgetLine) {
   html += '</div>'; // trend-plot
   html += '</div>'; // trend-chart-area
 
-  html += renderTrendLegend();
+  html += '<div id="trendLegend"></div>';
   html += '<div class="month-detail-actions"><button type="button" class="text-link" onclick="openTrendExpenseList()"><span id="trendDetailLabel">明細を見る</span><span aria-hidden="true">→</span></button><button type="button" class="calendar-shortcut" onclick="openTrendCalendar()" aria-label="選択月の明細をカレンダーで見る">' + iconSvg('calendar') + '</button></div>';
-  html += '<div id="trendSelectedBreakdown" class="analysis-breakdown"></div>';
 
   renderHtmlIfChanged(chart, html);
 
@@ -1725,108 +1726,23 @@ selectedTrendMonth = month;
   tooltip.className = 'trend-tooltip';
 
   renderHtmlIfChanged(tooltip,
-    '<div class="trend-summary-label">' + year + '年' + (month + 1) + '月・' + escapeHtml(getTrendCategoryButtonLabel()) + '</div>' +
+    '<div class="trend-summary-label">' + year + '年' + (month + 1) + '月の支出</div>' +
     '<div class="analysis-value">' + formatMoney(value) + '</div>' +
     (categoryMasterCache.monthly.categories.length > 0 && isSameCategorySet(trendSelectedCategories, categoryMasterCache.monthly.categories) ? '<div class="sub">月予算 ' + formatMoney(item.monthBudget) + '</div>' : ''));
   const detailLabel = document.getElementById('trendDetailLabel');
   if (detailLabel) detailLabel.textContent = (month + 1) + '月の明細を見る';
-  const breakdown = document.getElementById('trendSelectedBreakdown');
-  if (breakdown) renderHtmlIfChanged(breakdown, '<h2>選択月の内訳</h2>' + renderTrendTooltipCompact(item));
+  const legend = document.getElementById('trendLegend');
+  if (legend) renderHtmlIfChanged(legend, renderTrendLegend(item));
 
   const budgetRule = document.querySelector('#trendChartCard .trend-budget-line');
   if (budgetRule) {
-    const scale = Number(document.getElementById('trendChartCard').dataset.scaleMax);
-    budgetRule.style.top = (220 - (Number(item.monthBudget) / scale) * 220) + 'px';
+    const chart = document.getElementById('trendChartCard');
+    const scale = Number(chart.dataset.scaleMax);
+    const chartHeight = Number(chart.dataset.chartHeight);
+    budgetRule.style.top = (chartHeight - (Number(item.monthBudget) / scale) * chartHeight) + 'px';
     budgetRule.querySelector('span').textContent = '選択月の予算 ' + formatMoney(item.monthBudget);
   }
   updateSelectedTrendBar();
-}
-
-function renderTrendTooltipCompact(item) {
-  const allCategories = getTrendAllCategoriesFromMaster();
-
-  const fixedCategories = categoryMasterCache.fixed.categories;
-  const monthlyCategories = categoryMasterCache.monthly.categories;
-  const yearlyCategories = categoryMasterCache.yearly.categories;
-
-  const selectedCount = trendSelectedCategories.length;
-
-  const fixedAll =
-    fixedCategories.every(function(category) {
-      return trendSelectedCategories.includes(category);
-    });
-
-  const monthlyAll =
-    monthlyCategories.every(function(category) {
-      return trendSelectedCategories.includes(category);
-    });
-
-  const yearlyAll =
-    yearlyCategories.every(function(category) {
-      return trendSelectedCategories.includes(category);
-    });
-
-  if (selectedCount === allCategories.length) {
-    return (
-      '<div class="trend-tooltip-row">' +
-        '<span>合計</span>' +
-        '<span>' + formatMoney(item.total) + '</span>' +
-      '</div>'
-    );
-  }
-
-  if (fixedAll && selectedCount === fixedCategories.length) {
-    return (
-      '<div class="trend-tooltip-row">' +
-        '<span>固定費合計</span>' +
-        '<span>' + formatMoney(item.fixed) + '</span>' +
-      '</div>'
-    );
-  }
-
-  if (monthlyAll && selectedCount === monthlyCategories.length) {
-    return (
-      '<div class="trend-tooltip-row">' +
-        '<span>日常費合計</span>' +
-        '<span>' + formatMoney(item.monthly) + '</span>' +
-      '</div>'
-    );
-  }
-
-  if (yearlyAll && selectedCount === yearlyCategories.length) {
-    return (
-      '<div class="trend-tooltip-row">' +
-        '<span>特別費合計</span>' +
-        '<span>' + formatMoney(item.yearly) + '</span>' +
-      '</div>'
-    );
-  }
-
-  const rows = [];
-
-  trendSelectedCategories.forEach(function(category) {
-    const amount = Number(item.categories[category] || 0);
-
-    if (!amount) return;
-
-    rows.push(
-      '<div class="trend-tooltip-row">' +
-        '<span>' + category + '</span>' +
-        '<span>' + formatMoney(amount) + '</span>' +
-      '</div>'
-    );
-  });
-
-  if (rows.length === 0) {
-    return (
-      '<div class="trend-tooltip-row">' +
-        '<span>該当なし</span>' +
-        '<span>0円</span>' +
-      '</div>'
-    );
-  }
-
-  return rows.join('');
 }
 
 function updateSelectedTrendBar() {
@@ -1838,6 +1754,11 @@ function updateSelectedTrendBar() {
       Number(column.dataset.trendMonth) === selectedTrendMonth
     ) {
       column.classList.add('selected');
+      const plot = column.closest('.trend-plot');
+      const bounds = plot.getBoundingClientRect();
+      const bar = column.getBoundingClientRect();
+      if (bar.left < bounds.left) plot.scrollLeft += bar.left - bounds.left;
+      else if (bar.right > bounds.right) plot.scrollLeft += bar.right - bounds.right;
     }
   });
 }
@@ -1909,7 +1830,7 @@ function getTrendCategoryColor(index) {
   return colors[index % colors.length];
 }
 
-function renderTrendLegend() {
+function renderTrendLegend(item) {
   let html = '<div class="trend-legend">';
 
   if (isTrendWholeGroupSelection()) {
@@ -1931,21 +1852,21 @@ function renderTrendLegend() {
     if (fixedSelected) {
       html +=
         '<div class="trend-legend-item">' +
-          '<span class="trend-legend-color trend-fixed"></span>固定費' +
+          '<span class="trend-legend-color trend-fixed"></span>固定費 ' + formatMoney(item.fixed) +
         '</div>';
     }
 
     if (monthlySelected) {
       html +=
         '<div class="trend-legend-item">' +
-          '<span class="trend-legend-color trend-monthly"></span>日常費' +
+          '<span class="trend-legend-color trend-monthly"></span>日常費 ' + formatMoney(item.monthly) +
         '</div>';
     }
 
     if (yearlySelected) {
       html +=
         '<div class="trend-legend-item">' +
-          '<span class="trend-legend-color trend-yearly"></span>特別費' +
+          '<span class="trend-legend-color trend-yearly"></span>特別費 ' + formatMoney(item.yearly) +
         '</div>';
     }
 
@@ -1959,7 +1880,7 @@ function renderTrendLegend() {
         '<span class="trend-legend-color" style="background:' +
           getTrendCategoryColor(index) +
         ';"></span>' +
-        category +
+        escapeHtml(category) + ' ' + formatMoney(item.categories[category] || 0) +
       '</div>';
   });
 

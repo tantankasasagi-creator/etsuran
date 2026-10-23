@@ -27,7 +27,55 @@ await page.screenshot({path:'/workspace/work/new-home.png',fullPage:true});
 await page.click('#homeScreen .calendar-shortcut');await settle();
 let last=requests.filter(r=>r.action==='getCalendarData').at(-1);assert.equal(last.params.targetYear,year);assert.equal(last.params.targetMonth,month);assert.equal(last.params.selectedPerson,'共通');assert.deepEqual(last.params.selectedCategories,['家賃','食費','旅行']);
 await page.click('#calendarScreen .back-button');assert.equal(await page.locator('#homeScreen').isVisible(),true);
-await page.click('[data-nav=analysis]');await settle();assert.equal(await page.locator('#trendScreen').isVisible(),true);assert.equal(await page.locator('.trend-real-column').count(),6);assert.equal(await page.locator('.analysis-value').innerText(),'2,000円');
+await page.click('[data-nav=analysis]');await settle();assert.equal(await page.locator('#trendScreen').isVisible(),true);assert.equal(await page.locator('.trend-real-column').count(),6);assert.equal(await page.locator('.analysis-value').innerText(),'2,200円');
+assert.equal(await page.locator('#trendCategoryFilterButton').innerText(),'日常費＋特別費');
+assert.equal(await page.locator('.trend-budget-line').count(),0,'combined expenses do not use the daily-only budget scale');
+assert.match(await page.locator('#trendLegend').innerText(),/日常費 2,000円/);
+assert.match(await page.locator('#trendLegend').innerText(),/特別費 200円/);
+for (const [width,height] of [[320,640],[360,640],[390,700],[390,844]]) {
+  await page.setViewportSize({width,height});
+  for (const nav of ['home','analysis']) {
+    await page.click('[data-nav='+nav+']');await settle();
+    if(nav==='home') await page.evaluate(()=>renderHomeData({monthBudgetCalculated:true,monthBudget:100000,monthBudgetRemaining:87655,monthBudgetRate:12,budgetStatus:'順調です',dailyTotal:12345,allTotal:987654,fixedMonthTotal:111111,monthlyMonthTotal:12345,specialMonthTotal:864198,specialYearTotal:111111,yearBudget:222222,yearBudgetRemaining:111111,yearBudgetRate:50}));
+    assert.equal(await page.evaluate(nav=>{
+      const screen=document.querySelector(nav==='home'?'#homeScreen':'#trendScreen');
+      const footer=screen.querySelector('.month-detail-actions').getBoundingClientRect();
+      const bar=document.querySelector('.bottom-nav').getBoundingClientRect();
+      return scrollY===0 && footer.bottom<=bar.top && document.documentElement.scrollHeight<=innerHeight;
+    },nav),true,nav+' fits without scrolling at '+width+'x'+height);
+  }
+  assert.equal(await page.evaluate(()=>{
+    const plot=document.querySelector('.trend-chart-area').getBoundingClientRect();
+    const segments=[...document.querySelectorAll('.trend-monthly,.trend-yearly')].filter(e=>e.classList.contains('trend-segment'));
+    return segments.length===12 && segments.every(e=>{const r=e.getBoundingClientRect();return r.width>8 && r.height>5 && r.top>=plot.top-.5 && r.bottom<=plot.bottom && r.bottom<innerHeight;});
+  }),true,'both expense groups are painted in the visible chart');
+}
+// The budget rule must use the same height and scale as the bars after selection changes.
+await page.evaluate(()=>{trendSelectedCategories=categoryMasterCache.monthly.categories.slice();renderTrendChart()});
+assert.equal(await page.locator('.trend-budget-line').count(),1);
+assert.equal(await page.evaluate(()=>{
+  const card=document.getElementById('trendChartCard');
+  const data=getCurrentTrendData().at(-1),height=Number(card.dataset.chartHeight),scale=Number(card.dataset.scaleMax);
+  const top=parseFloat(document.querySelector('.trend-budget-line').style.top);
+  const segment=document.querySelector('.trend-segment.trend-monthly');
+  return Math.abs(top-(height-data.monthBudget/scale*height))<.01 && Math.abs(segment.getBoundingClientRect().height-(data.monthly/scale*height))<1;
+}),true,'daily budget and expense bar share the same coordinate system');
+await page.evaluate(()=>{trendSelectedCategories=categoryMasterCache.monthly.categories.concat(categoryMasterCache.yearly.categories);renderTrendChart()});
+await page.setViewportSize({width:390,height:844});
+// Long histories remain contained, with the selected recent month visible.
+await page.evaluate(()=>{
+  window.savedTrendRows=trendDataCache[currentTrendPerson];
+  const now=new Date(),sample=window.savedTrendRows.at(-1);
+  trendDataCache[currentTrendPerson]=Array.from({length:36},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-35+i,1);return {...sample,year:d.getFullYear(),month:d.getMonth(),label:(d.getMonth()+1)+'月'}});
+});
+await page.selectOption('#trendRange','0');
+assert.equal(await page.evaluate(()=>{
+  const plot=document.querySelector('.trend-plot'),selected=document.querySelector('.trend-real-column.selected');
+  const p=plot.getBoundingClientRect(),r=selected.getBoundingClientRect();
+  return plot.scrollWidth>plot.clientWidth && plot.scrollHeight<=plot.clientHeight && r.left>=p.left-1 && r.right<=p.right+1 && scrollY===0 && document.documentElement.scrollWidth<=innerWidth;
+}),true,'all-period chart keeps labels and the selected month visible without page overflow');
+await page.evaluate(()=>{trendDataCache[currentTrendPerson]=window.savedTrendRows;delete window.savedTrendRows});
+await page.selectOption('#trendRange','6');
 await page.click('#trendScreen [data-trend-person="くる"]');
 await page.click('#trendScreen [data-analysis-tab=ranking]');await settle();assert.equal(await page.evaluate(()=>currentRankingPerson),'くる');
 await page.click('#rankingScreen [data-analysis-tab=trend]');await settle();assert.equal(await page.evaluate(()=>currentTrendPerson),'くる');
@@ -38,14 +86,25 @@ await page.click(`.trend-real-column[data-trend-year="${previousYear}"][data-tre
 assert.match(await page.locator('#trendDetailLabel').innerText(),new RegExp((previousMonth+1)+'月'));
 await page.screenshot({path:'/workspace/work/new-analysis.png',fullPage:true});
 await page.click('#trendChartCard .calendar-shortcut');await settle();last=requests.filter(r=>r.action==='getCalendarData').at(-1);
-assert.equal(last.params.targetMonth,previousMonth);assert.equal(last.params.targetYear,previousYear);assert.equal(last.params.selectedPerson,'くる');assert.deepEqual(last.params.selectedCategories,['食費']);
+assert.equal(last.params.targetMonth,previousMonth);assert.equal(last.params.targetYear,previousYear);assert.equal(last.params.selectedPerson,'くる');assert.deepEqual(last.params.selectedCategories,['食費','旅行']);
 await page.click('#calendarScreen .back-button');await settle();assert.equal(await page.locator('#trendScreen').isVisible(),true);assert.equal(await page.evaluate(()=>selectedTrendMonth),previousMonth);
 await page.click('#trendChartCard .text-link');await settle();
-assert.equal(await page.locator('#expenseListContent .expense-row').count(),1,'trend detail list uses the selected categories');
+assert.equal(await page.locator('#expenseListContent .expense-row').count(),2,'trend detail list uses the selected categories');
 assert.equal(await page.locator('#expenseListContent').innerText().then(t=>t.includes('家賃')),false);
 assert.equal(await page.locator('#expenseModal').evaluate(e=>e.classList.contains('open')),true);
 await page.click('#expenseModal .calendar-shortcut');await settle();assert.equal(await page.locator('#calendarScreen').isVisible(),true);assert.equal(await page.evaluate(()=>currentCalendarPerson),'くる');
 await page.click('[data-nav=balance]');await settle();assert.equal(await page.locator('#balanceScreen').isVisible(),true);assert.equal(await page.locator('[data-nav=balance]').getAttribute('aria-current'),'page');
+await page.evaluate(()=>{
+  const year=new Date().getFullYear();
+  const rows=Array.from({length:12},(_,month)=>({year,month,label:(month+1)+'月',income:345678,expense:234567,balance:111111}));
+  renderBalanceSummary(rows);renderBalanceTable(rows);
+});
+for(const [width,height] of [[320,640],[390,700]]){
+  await page.setViewportSize({width,height});
+  assert.equal(await page.evaluate(()=>document.getElementById('balanceMonthlyTable').getBoundingClientRect().bottom<=document.querySelector('.bottom-nav').getBoundingClientRect().top && document.documentElement.scrollHeight<=innerHeight && document.documentElement.scrollWidth<=innerWidth),true,'full-year balance fits at '+width+'x'+height);
+}
+await page.screenshot({path:'/workspace/work/new-balance.png',fullPage:true});
+await page.setViewportSize({width:390,height:844});
 await page.click('[data-nav=other]');assert.equal(await page.locator('#otherScreen').isVisible(),true);
 await page.click('#otherScreen button:has-text("財産目録")');await settle();await page.click('#assetScreen .back-button');assert.equal(await page.locator('#otherScreen').isVisible(),true);
 await page.click('#otherScreen button:has-text("予算")');await settle();await page.click('#budgetScreen .back-button');
@@ -54,5 +113,5 @@ await page.click('#otherScreen button:has-text("接続設定")');await page.loca
 failedActions.add('getMonthlyTrendData');await page.evaluate(()=>invalidateApiCache());await page.click('[data-nav=analysis]');await settle();assert.equal(await page.locator('#trendChartCard .retry-button').count(),1);failedActions.clear();await page.click('#trendChartCard .retry-button');await settle();assert.equal(await page.evaluate(()=>typeof currentTrendPerson),'string');assert.equal(await page.locator('.trend-real-column').count(),6,'analysis retry preserves a valid person');
 for(const width of [320,390,768]){await page.setViewportSize({width,height:844});for(const selector of ['[data-nav=home]','[data-nav=balance]','[data-nav=analysis]','[data-nav=other]']){await page.click(selector);await settle();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,selector+' width '+width)}}
 assert.deepEqual(errors,[]);assert.equal(await page.locator('.error-state:visible').count(),0);assert.equal((await page.locator('body').innerText()).includes('NaN'),false);
-console.log('PASS: home redesign, four primary destinations, analysis tabs/person/range, same-context list/calendar and return, other/settings pages, no writes, JS errors or overflow at 320/390/768px.');await browser.close();
+console.log('PASS: compact home/analysis/balance fit 320x640–390x844 without scrolling, visible stacked bars and matching budget scale, long-period selected month stays visible, combined default, home redesign, four primary destinations, analysis tabs/person/range, same-context list/calendar and return, other/settings pages, no writes, JS errors or overflow at 320/390/768px.');await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

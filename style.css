@@ -1863,111 +1863,127 @@ body[data-locked] > .auth-shell { display: block; }
 
 /* Main layout: quiet surfaces, shared navigation, and contextual detail views. */
 :root { --app-green: #397054; --app-ink: #192321; --app-muted: #728078; --app-line: #e2e7e1; --app-paper: #fcfcf9; }
-body { box-sizing: border-box; max-width: 700px; margin: 0 auto; padding: 18px 18px calc(94px + env(safe-area-inset-bottom)); background: var(--app-paper); color: var(--app-ink); font-variant-numeric: tabular-nums; }
+body { box-sizing: border-box; max-width: 700px; margin: 0 auto; padding: 10px 16px calc(70px + env(safe-area-inset-bottom)); background: var(--app-paper); color: var(--app-ink); font-variant-numeric: tabular-nums; }
+.screen { padding-bottom: 0; }
+.visually-hidden, #trendScreen > .trend-header-row, #rankingScreen > .trend-header-row { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 button, input, select { font-family: inherit; }
 .app-header { gap: 10px; }
-.app-header .app-title { font-size: 28px; font-weight: 750; letter-spacing: -1px; }
+.app-header .app-title { font-size: 23px; font-weight: 600; letter-spacing: -.7px; }
 .header-actions { gap: 8px; }
 #refreshDataButton { width: 44px; padding: 0; border: 0; border-radius: 50%; font-size: 23px; background: transparent; color: var(--app-muted); }
-.header-actions .kakeiboLinkButton { padding: 10px 14px; border: 0; border-radius: 12px; background: var(--app-green); color: white; font-size: 14px; font-weight: 600; }
-.connection-toolbar { margin: 2px 0 14px; color: var(--app-muted); font-size: 10px; }
-.tabs { gap: 0; padding: 2px; margin-bottom: 14px; border: 1px solid var(--app-line); border-radius: 12px; background: transparent; }
-.tab, .trend-tab { border: 0; border-radius: 9px; background: transparent; font-size: 14px; }
+.header-actions .kakeiboLinkButton { padding: 10px 14px; border: 0; border-radius: 12px; background: var(--app-green); color: white; font-size: 13px; font-weight: 500; }
+.connection-toolbar { min-height: 14px; line-height: 14px; margin: 0 0 6px; color: var(--app-muted); font-size: 10px; }
+.tabs { gap: 0; padding: 2px; margin-bottom: 8px; border: 1px solid var(--app-line); border-radius: 12px; background: transparent; }
+.tab, .trend-tab { border: 0; border-radius: 9px; background: transparent; font-size: 13px; font-weight: 400; }
 .tab.active, .trend-tab.active { background: var(--app-green); }
-.month-switcher { gap: 12px; margin: 4px 0 22px; }
-.month-switcher .month { font-size: 20px; font-weight: 600; }
+.month-switcher { gap: 10px; margin: 0 0 8px; }
+.month-switcher .month { font-size: 17px; font-weight: 500; }
 .month-button { background: transparent; border: 1px solid var(--app-line); box-shadow: none; }
-.hero { padding: 0 0 24px; margin: 0; border-radius: 0; background: transparent; box-shadow: none; border-bottom: 1px solid var(--app-line); }
+.hero { padding: 0 0 14px; margin: 0; border-radius: 0; background: transparent; box-shadow: none; border-bottom: 1px solid var(--app-line); }
 .hero.caution, .hero.warning, .hero.future { background: transparent; }
 .home-heading-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.hero .label, .mini-card .label { margin: 0; font-size: 16px; font-weight: 600; color: var(--app-ink); }
-.hero .budget-caption { margin: 18px 0 3px; font-size: 13px; color: var(--app-muted); }
-.hero .budget-value { font-size: clamp(36px, 11vw, 50px); font-weight: 650; letter-spacing: -1.6px; line-height: 1.15; overflow-wrap: anywhere; }
+.hero .label, .mini-card .label { margin: 0; font-size: 13px; font-weight: 500; color: var(--app-ink); }
+.hero .budget-caption { margin: 8px 0 2px; font-size: 12px; color: var(--app-muted); }
+.hero .budget-value { font-size: clamp(28px, 8vw, 34px); font-weight: 500; letter-spacing: -.8px; line-height: 1.15; overflow-wrap: anywhere; }
 .hero.warning .budget-value { color: #b24b3b; }
 .hero .status { flex: 0 1 auto; max-width: 48%; margin: 0; padding: 5px 9px; border-radius: 20px; font-size: 11px; line-height: 1.5; text-align: right; }
-.home-spend-line { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 12px; color: var(--app-muted); font-size: 13px; }
-.bar-line { margin-top: 15px; }
-.bar-bg { height: 6px; background: #e7ece6; }
+.home-spend-line { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; color: var(--app-muted); font-size: 12px; }
+.bar-line { margin-top: 8px; }
+.bar-bg { height: 4px; background: #e7ece6; }
 .bar { background: #6b9c79; }
 .rate-text { font-size: 11px; color: var(--app-muted); }
 .mini-grid { display: block; margin: 0; }
-.mini-card { min-height: 0; padding: 22px 0; margin: 0; border-radius: 0; border-bottom: 1px solid var(--app-line); box-shadow: none; background: transparent; }
+.mini-card { min-height: 0; padding: 12px 0; margin: 0; border-radius: 0; border-bottom: 1px solid var(--app-line); box-shadow: none; background: transparent; }
 .special-card.month-mode, .special-card, .total-card { background: transparent; }
 .special-remaining { display: flex; align-items: baseline; gap: 5px; font-size: 11px; color: var(--app-muted); }
-.special-remaining strong { color: var(--app-ink); font-size: clamp(21px, 6vw, 28px); font-weight: 650; letter-spacing: -.7px; }
-.special-card .sub { margin-top: 9px; font-size: 12px; }
+.special-remaining strong { color: var(--app-ink); font-size: clamp(19px, 5vw, 23px); font-weight: 500; letter-spacing: -.4px; }
+.special-card .sub { margin-top: 5px; font-size: 12px; }
 .special-card .bar { background: #dbb34e; }
 .special-card .danger { color: #b24b3b; }
-.total-card .mini-value { margin-top: 12px; font-size: clamp(30px, 9vw, 40px); font-weight: 650; letter-spacing: -1px; color: var(--app-ink); }
-.total-card .breakdown { margin-top: 15px; }
+.total-card { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 10px 12px; }
+.total-card .mini-value { margin: 0; font-size: clamp(20px, 6vw, 25px); font-weight: 500; letter-spacing: -.5px; color: var(--app-ink); }
+.total-card .breakdown { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
+.total-card .breakdown-row { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 0 8px; border: 0; border-left: 1px solid var(--app-line); font-size: 11px; }
+.total-card .breakdown-row:first-child { padding-left: 0; border-left: 0; }
+.total-card .breakdown-row span:last-child { color: var(--app-ink); font-size: 12px; overflow-wrap: anywhere; }
 .breakdown-row { padding: 9px 0; margin: 0; border-bottom: 1px solid var(--app-line); font-size: 13px; color: var(--app-muted); }
 .breakdown-row:last-child { border-bottom: 0; padding-bottom: 0; }
-.month-detail-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 12px 0; }
-.text-link { display: flex; align-items: center; justify-content: flex-start; gap: 14px; width: auto; padding: 8px 0; margin: 0; border: 0; background: transparent; color: var(--app-green); font-size: 15px; font-weight: 600; text-align: left; }
+.month-detail-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 6px 0; }
+.text-link { display: flex; align-items: center; justify-content: flex-start; gap: 14px; width: auto; padding: 8px 0; margin: 0; border: 0; background: transparent; color: var(--app-green); font-size: 13px; font-weight: 500; text-align: left; }
 .calendar-shortcut { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 10px; border: 1px solid var(--app-line); border-radius: 11px; color: var(--app-green); background: transparent; }
 .calendar-shortcut svg { width: 22px; height: 22px; }
 .bottom-nav { position: fixed; z-index: 50; bottom: 0; left: 50%; transform: translateX(-50%); box-sizing: border-box; width: 100%; max-width: 700px; display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 8px max(8px, env(safe-area-inset-bottom)); border-top: 1px solid var(--app-line); background: rgba(252,252,249,.98); }
-.bottom-nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 52px; width: auto; padding: 4px; margin: 0; border: 0; border-radius: 10px; background: transparent; color: #88918a; font-size: 11px; font-weight: 500; }
-.bottom-nav button.active { color: var(--app-green); font-weight: 700; }
-.bottom-nav svg { display: block; width: 24px; height: 24px; }
-.page-title, .trend-header-row .screen-title { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -.5px; }
-.trend-header-row { justify-content: flex-start; gap: 12px; margin: 8px 0 20px; }
+.bottom-nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 52px; width: auto; padding: 4px; margin: 0; border: 0; border-radius: 10px; background: transparent; color: #88918a; font-size: 10px; font-weight: 400; }
+.bottom-nav button.active { color: var(--app-green); font-weight: 500; }
+.bottom-nav svg { display: block; width: 22px; height: 22px; }
+.page-title, .trend-header-row .screen-title { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: -.3px; }
+.trend-header-row { justify-content: flex-start; gap: 12px; margin: 4px 0 10px; }
 .back-button { margin: 0; padding: 6px 8px; border: 0; background: transparent; color: var(--app-muted); font-size: 13px; }
-.other-menu { margin-top: 24px; }
-.other-menu button { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 21px 2px; margin: 0; border: 0; border-bottom: 1px solid var(--app-line); border-radius: 0; background: transparent; text-align: left; color: var(--app-ink); }
-.other-menu strong { display: block; font-size: 16px; font-weight: 600; }
+.other-menu { margin-top: 14px; }
+.other-menu button { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 16px 2px; margin: 0; border: 0; border-bottom: 1px solid var(--app-line); border-radius: 0; background: transparent; text-align: left; color: var(--app-ink); }
+.other-menu strong { display: block; font-size: 14px; font-weight: 500; }
 .other-menu small { display: block; margin-top: 6px; font-size: 12px; color: var(--app-muted); }
-.analysis-tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px; padding: 3px; margin: 0 0 18px; border: 1px solid var(--app-line); border-radius: 12px; }
-.analysis-tabs button { width: auto; margin: 0; padding: 8px; border: 0; border-radius: 9px; background: transparent; color: var(--app-muted); font-size: 14px; }
+.analysis-tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px; padding: 3px; margin: 0 0 10px; border: 1px solid var(--app-line); border-radius: 12px; }
+.analysis-tabs button { width: auto; margin: 0; padding: 8px; border: 0; border-radius: 9px; background: transparent; color: var(--app-muted); font-size: 13px; font-weight: 400; }
 .analysis-tabs button[aria-selected="true"] { background: var(--app-green); color: white; }
-#trendScreen .filter-condition-card { display: inline-block; width: calc(100% - 155px); margin: 0 8px 18px 0; vertical-align: top; }
-#trendScreen .condition-summary-card { padding: 9px 11px; border: 1px solid var(--app-line); border-radius: 11px; box-shadow: none; background: transparent; }
+.trend-controls { display: grid; grid-template-columns: minmax(0, 1fr) 116px; gap: 8px; align-items: end; margin-bottom: 8px; }
+#trendScreen .filter-condition-card { min-width: 0; margin: 0; }
+#trendScreen .condition-summary-card { box-sizing: border-box; justify-content: center; min-height: 44px; margin: 0; padding: 8px 10px; border: 1px solid var(--app-line); border-radius: 11px; box-shadow: none; background: transparent; }
 #trendScreen .condition-summary-label { display: none; }
-#trendScreen .condition-summary-main { font-size: 13px; margin: 0; }
-.trend-range-label { display: inline-flex; flex-direction: column; gap: 3px; width: 138px; font-size: 10px; color: var(--app-muted); }
+#trendScreen .condition-summary-main { font-size: 12px; font-weight: 400; margin: 0; gap: 4px; }
+.trend-range-label { display: inline-flex; flex-direction: column; gap: 3px; width: 116px; font-size: 10px; color: var(--app-muted); }
 .trend-range-label select { box-sizing: border-box; width: 100%; height: 44px; padding: 6px 8px; border: 1px solid var(--app-line); border-radius: 11px; background: transparent; color: var(--app-ink); font-size: 13px; }
-.placeholder-card, .asset-summary-card { padding: 18px 0; border-radius: 0; box-shadow: none; background: transparent; }
+.placeholder-card, .asset-summary-card { padding: 12px 0; border-radius: 0; box-shadow: none; background: transparent; }
 #trendChartCard { padding: 2px 0 0; }
-.trend-tooltip { padding: 0; margin: 0 0 20px; background: transparent; border: 0; border-radius: 0; }
-.trend-summary-label { font-size: 14px; font-weight: 600; color: var(--app-ink); }
-.analysis-value { margin-top: 8px; font-size: clamp(30px, 9vw, 42px); font-weight: 650; letter-spacing: -1px; color: var(--app-ink); }
-.trend-plot { min-width: 0; overflow-x: auto; }
-.trend-real-chart { gap: 8px; padding-top: 0; min-width: min-content; }
-.trend-real-column { min-width: 26px; }
-.trend-real-bar { max-width: 35px; border-radius: 4px 4px 0 0; overflow: hidden; }
+.trend-tooltip { padding: 0; margin: 0 0 6px; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+.trend-summary-label { font-size: 12px; font-weight: 400; color: var(--app-muted); }
+.analysis-value { margin-top: 4px; font-size: 27px; font-weight: 500; letter-spacing: -.6px; line-height: 1.2; color: var(--app-ink); }
+/* One height controls the axis, stacks and budget line. Long ranges scroll inside the plot. */
+.trend-chart-area { height: calc(var(--trend-chart-height) + 36px); margin-top: 0; }
+.trend-scale { box-sizing: border-box; flex: 0 0 38px; width: 38px; height: var(--trend-chart-height); font-size: 10px; }
+.trend-plot { min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+.trend-grid { height: var(--trend-chart-height); }
+.trend-real-chart { box-sizing: border-box; display: grid; grid-template-columns: repeat(var(--trend-count), minmax(24px, 1fr)); align-items: start; gap: 4px; padding: 0; height: calc(var(--trend-chart-height) + 24px); min-width: calc(var(--trend-count) * 28px); }
+.trend-real-column { display: flex; min-width: 0; height: 100%; opacity: .85; }
+.trend-real-bar { flex: 0 0 var(--trend-chart-height); width: 70%; max-width: 28px; height: var(--trend-chart-height); border-radius: 3px 3px 0 0; overflow: hidden; }
+.trend-segment { flex-shrink: 0; }
+.trend-real-label { margin-top: 6px; font-size: 10px; }
 .trend-monthly { background: #8caf96; }
 .trend-real-column.selected .trend-monthly { background: var(--app-green); }
-.trend-legend { margin: 12px 0 18px; font-size: 11px; }
-.analysis-breakdown { border-top: 1px solid var(--app-line); margin-top: 18px; padding-top: 18px; }
-.analysis-breakdown h2 { margin: 0 0 12px; font-size: 16px; }
-.analysis-breakdown .trend-tooltip-row { padding: 8px 0; border-bottom: 1px solid var(--app-line); font-size: 13px; }
-.balance-main-value { text-align: left; font-weight: 650; }
-.balance-summary-title { font-size: 14px; color: var(--app-muted); }
-.balance-summary-split { background: transparent; }
+.trend-legend { margin: 6px 0; font-size: 11px; }
+.balance-summary-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 12px; align-items: center; padding: 14px 0; }
+.balance-summary-title { grid-column: 1; margin: 0; font-size: 12px; font-weight: 400; color: var(--app-muted); }
+.balance-main-value { grid-column: 1; margin: 0; font-size: clamp(20px, 6vw, 26px); text-align: left; font-weight: 500; letter-spacing: -.6px; }
+.balance-summary-split { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 6px; border-top: 0; border-left: 1px solid var(--app-line); padding: 0 0 0 12px; text-align: left; background: transparent; }
+.balance-summary-split > div { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.balance-small-label { font-size: 12px; color: var(--app-muted); }
+.balance-small-value { font-size: 13px; font-weight: 400; }
+.balance-table-header { margin-bottom: 4px; font-size: 11px; font-weight: 400; }
+.balance-table-row { padding: 3px 0; font-size: 12px; }
+#balanceMonthlyTable { margin-top: 8px; }
 #rankingConditionCard { background: transparent; box-shadow: none; border: 1px solid var(--app-line); }
-.ranking-top-card { box-shadow: none; }
+.ranking-top-card, .ranking-top-card.rank-1 { padding: 12px; border: 1px solid var(--app-line); border-radius: 12px; box-shadow: none; }
+.ranking-title, .rank-1 .ranking-title { font-size: 15px; font-weight: 500; }
+.ranking-amount, .rank-1 .ranking-amount { font-size: 23px; font-weight: 500; }
+.ranking-list-amount, .ranking-list-title { font-weight: 500; }
+.asset-main-value { font-size: 28px; font-weight: 500; }
 .auth-shell { margin: 8vh auto; }
 @media (max-width: 350px) {
   body { padding-inline: 14px; }
-  .app-header .app-title { font-size: 26px; }
+  .app-header .app-title { font-size: 22px; }
   .header-actions .kakeiboLinkButton { font-size: 13px; padding-inline: 12px; }
   .special-card .home-heading-row { gap: 6px; }
-  .special-card .label { font-size: 14px; }
-  .special-remaining strong { font-size: 22px; }
+  .special-card .label { font-size: 12px; }
+  .special-remaining strong { font-size: 19px; }
 }
-/* Keep home detail shortcuts above the bottom bar on a typical phone. */
-.connection-toolbar { margin-bottom: 8px; }
-#homeScreen > .tabs { margin-bottom: 8px; }
-#homeScreen .month-switcher { margin: 0 0 14px; }
-#homeScreen .hero { padding-bottom: 18px; }
-#homeScreen .hero .budget-caption { margin-top: 12px; }
-#homeScreen .home-spend-line { margin-top: 8px; }
-#homeScreen .bar-line { margin-top: 12px; }
-#homeScreen .mini-card { padding: 18px 0; }
-#homeScreen .total-card .breakdown { margin-top: 8px; }
-#homeScreen .breakdown-row { padding-top: 7px; padding-bottom: 7px; }
-#homeScreen .breakdown-row:last-child { padding-bottom: 0; }
-.trend-tooltip { box-shadow: none; }
 .trend-header-row .screen-title { flex: none; text-align: left; }
-#homeScreen .mini-card { padding-block: 14px; }
-#homeScreen .month-detail-actions { margin-block: 8px; }
+@media (max-height: 720px) {
+  body { padding-top: 6px; }
+  .trend-header-row { margin-block: 0 6px; }
+  #homeScreen .month-switcher { margin-bottom: 4px; }
+  #homeScreen .hero { padding-bottom: 10px; }
+  #homeScreen .mini-card { padding-block: 10px; }
+  #balanceScreen .trend-header-row { min-height: 28px; }
+  #balanceScreen .balance-summary-card { padding-block: 10px; }
+  #balanceMonthlyTable { padding-block: 6px; margin-top: 4px; }
+}

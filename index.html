@@ -149,21 +149,18 @@
     </div>
 
 
-    <div class="filter-condition-card">
-
-      <div id="trendConditionCard" class="condition-summary-card" onclick="openTrendCategorySheet()">
-
-        <div class="condition-summary-label">カテゴリ</div>
-
-        <div class="condition-summary-main">
-          <span id="trendCategoryFilterButton">すべて</span>
-          <span class="condition-card-arrow">▶</span>
+    <div class="trend-controls">
+      <div class="filter-condition-card">
+        <div id="trendConditionCard" class="condition-summary-card" onclick="openTrendCategorySheet()">
+          <div class="condition-summary-label">カテゴリ</div>
+          <div class="condition-summary-main">
+            <span id="trendCategoryFilterButton">すべて</span>
+            <span class="condition-card-arrow">▶</span>
+          </div>
         </div>
-
       </div>
+      <label class="trend-range-label" for="trendRange"><span class="visually-hidden">表示期間</span><select id="trendRange" onchange="changeTrendRange(this.value)"><option value="6">過去6か月</option><option value="12">過去12か月</option><option value="0">全期間</option></select></label>
     </div>
-
-    <label class="trend-range-label" for="trendRange">表示期間 <select id="trendRange" onchange="changeTrendRange(this.value)"><option value="6">過去6か月</option><option value="12">過去12か月</option><option value="0">全期間</option></select></label>
 
     <div class="placeholder-card" id="trendChartCard">
       読み込み中...
@@ -188,7 +185,7 @@
       読み込み中...
     </div>
 
-    <div class="placeholder-card balance-table-card" id="balanceMonthlyTable" style="margin-top:12px;">
+    <div class="placeholder-card balance-table-card" id="balanceMonthlyTable">
       読み込み中...
     </div>
 

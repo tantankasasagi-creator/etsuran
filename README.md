@@ -27,11 +27,12 @@ python3 -m http.server 8000
 node --check app.js
 node tests/api.test.cjs
 node tests/browser.test.cjs
+node tests/navigation.test.cjs
 node tests/prefetch.test.cjs
 ```
 
 ブラウザテストには Playwright と Chromium が必要です。システムの `/usr/bin/chromium`、または Playwright の Chromium を利用します。別の実行ファイルは `CHROMIUM_PATH` で指定できます。
-テストは模擬APIを使用し、実データの取得・予算更新は行いません。スマホ幅で先読み、キャッシュ、連続切替、空データ、エラーと再試行、モーダル操作を確認します。
+テストは模擬APIを使用し、実データの取得・予算更新は行いません。ナビゲーションテストでは320×640〜390×844の画面でホーム・推移・年間収支の主要情報がスクロールせず収まること、日常費＋特別費の初期選択、棒の表示面積と予算線の座標を確認します。スマホ幅で先読み、キャッシュ、連続切替、空データ、エラーと再試行、モーダル操作を確認します。
 
 ## GAS API 本体
 
@@ -53,6 +54,7 @@ GASテストは模擬データを使い、既存の単月集計との金額一�
 ```sh
 node tools/build-site.cjs
 SITE_ROOT="$PWD/_site" node tests/browser.test.cjs
+node tests/navigation.test.cjs
 node tests/prefetch.test.cjs
 ```
 
