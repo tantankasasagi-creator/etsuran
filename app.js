@@ -248,7 +248,7 @@ function showErrorState(element, error, retry) {
   button.type = 'button';
   button.className = 'retry-button';
   button.textContent = 'もう一度読み込む';
-  button.addEventListener('click', retry);
+  button.addEventListener('click', function() { retry(); });
   box.append(message, button);
   element.append(box);
 }
