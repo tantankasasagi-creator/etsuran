@@ -3,6 +3,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const root = path.resolve(__dirname, '..');
 const output = path.join(root, '_site');
+fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(output, { recursive: true });
 let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 for (const file of ['app.js', 'style.css']) {

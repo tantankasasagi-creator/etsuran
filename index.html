@@ -41,8 +41,8 @@
   <header class="app-header">
     <div class="app-title">etsuran</div>
     <div class="header-actions">
-      <button type="button" id="refreshDataButton" onclick="refreshVisibleData()">↻ 更新</button>
-      <button type="button" class="kakeiboLinkButton" onclick="openKakeibo()">✏️ kakeibo</button>
+      <button type="button" id="refreshDataButton" aria-label="データを更新" onclick="refreshVisibleData()">↻</button>
+      <button type="button" class="kakeiboLinkButton" onclick="openKakeibo()">＋ 記録する</button>
     </div>
   </header>
   <div class="connection-toolbar">
@@ -64,96 +64,48 @@
       <button class="month-button" id="nextMonthButton" aria-label="次の月" onclick="changeMonth(1)">›</button>
     </div>
 
-    <div class="hero">
-      <div class="label">🌱 今月の日常費</div>
-
-      <div class="budget-row">
-        <div class="budget-item">
-          <div class="budget-caption">支出</div>
-          <div class="budget-value" id="dailyTotal">読み込み中...</div>
-        </div>
-        <div class="budget-item">
-          <div class="budget-caption" id="monthRemainingLabel">残り予算</div>
-          <div class="budget-value-small" id="monthBudgetRemaining">読み込み中...</div>
-        </div>
+    <section class="hero" aria-label="日常費の予算">
+      <div class="home-heading-row">
+        <div class="label" id="homeDailyLabel">今月の日常費</div>
+        <div class="status" id="budgetStatus">読み込み中...</div>
       </div>
-
-      <div class="sub" id="monthBudgetText">月予算 読み込み中...</div>
-
-      <div class="bar-line">
-        <div class="bar-bg">
-          <div class="bar" id="monthBudgetBar"></div>
-        </div>
-        <div class="rate-text" id="monthBudgetRate">--%消化</div>
-      </div>
-
-      <div class="status" id="budgetStatus">読み込み中...</div>
-    </div>
-
+      <div class="budget-caption" id="monthRemainingLabel">残り予算</div>
+      <div class="budget-value" id="monthBudgetRemaining">読み込み中...</div>
+      <div class="home-spend-line"><span>支出 <span id="dailyTotal">—</span></span><span id="monthBudgetText">月予算 —</span></div>
+      <div class="bar-line"><div class="bar-bg"><div class="bar" id="monthBudgetBar"></div></div><div class="rate-text" id="monthBudgetRate">--%</div></div>
+    </section>
     <div class="mini-grid">
-      <div class="mini-card special-card" onclick="toggleSpecialMode()">
-        <div class="label" id="specialCardTitle">🎒 今年の特別費</div>
-        <div class="sub" id="yearRemainingLabel">残り予算</div>
-        <div class="mini-value" id="yearBudgetRemaining">読み込み中...</div>
-
-        <div class="sub" id="specialYearTotal">支出 読み込み中...</div>
-
-        <div class="bar-bg" style="margin-top:10px;">
-          <div class="bar" id="yearBudgetBar"></div>
-        </div>
-        <div class="sub" id="yearBudgetRate">--%消化</div>
-      </div>
-
-      <div class="mini-card total-card" onclick="openExpenseList()">
-        <div class="label">💰 今月の支出</div>
+      <section class="mini-card special-card" role="button" tabindex="0" onclick="toggleSpecialMode()" aria-label="特別費の年・月表示を切り替え">
+        <div class="home-heading-row"><div class="label" id="specialCardTitle">今年の特別費</div><div class="special-remaining"><span id="yearRemainingLabel">残り予算</span><strong id="yearBudgetRemaining">—</strong></div></div>
+        <div class="sub" id="specialYearTotal">支出 —</div>
+        <div class="bar-line"><div class="bar-bg"><div class="bar" id="yearBudgetBar"></div></div><div class="rate-text" id="yearBudgetRate">--%</div></div>
+      </section>
+      <section class="mini-card total-card" onclick="openExpenseList()" role="button" tabindex="0" aria-label="選択月の支出明細を見る">
+        <div class="label" id="homeTotalLabel">今月の総支出</div>
         <div class="mini-value" id="allTotal">読み込み中...</div>
         <div class="breakdown" id="monthlyBreakdown">読み込み中...</div>
-      </div>
+      </section>
     </div>
-
-    <div class="menu-title">miru</div>
-
-    <div class="menu">
-
-      <div class="menu-item" onclick="showCalendarScreen()">
-        <div class="menu-icon">📅</div>
-        <div class="menu-text">カレンダー</div>
-      </div>
-
-      <div class="menu-item" data-prefetch="trend" onclick="showTrendScreen()">
-        <div class="menu-icon">📈</div>
-        <div class="menu-text">月別推移</div>
-      </div>
-
-      <div class="menu-item" data-prefetch="balance" onclick="showBalanceScreen()">
-        <div class="menu-icon">💴</div>
-        <div class="menu-text">収支</div>
-      </div>
-
-      <div class="menu-item" data-prefetch="ranking" onclick="showRankingScreen()">
-        <div class="menu-icon">🏆</div>
-        <div class="menu-text">ランキング</div>
-      </div>
-
-      <div class="menu-item" onclick="showAssetScreen()">
-        <div class="menu-icon">🏦</div>
-        <div class="menu-text">財産目録</div>
-      </div>
-
-      <div class="menu-item" onclick="showBudgetScreen()">
-        <div class="menu-icon">🧾</div>
-        <div class="menu-text">予算</div>
-      </div>
-
+    <div class="month-detail-actions">
+      <button type="button" class="text-link" onclick="openExpenseList()"><span data-home-detail-label>今月の明細を見る</span><span aria-hidden="true">→</span></button>
+      <button type="button" class="calendar-shortcut" onclick="openHomeCalendar()" aria-label="選択月の明細をカレンダーで見る"></button>
     </div>
-
   </div>
+
+  <section id="otherScreen" class="screen hidden">
+    <h1 class="page-title">その他</h1>
+    <div class="other-menu">
+      <button type="button" onclick="showAssetScreen()"><span><strong>財産目録</strong><small>資産の内訳と推移</small></span><span aria-hidden="true">›</span></button>
+      <button type="button" onclick="showBudgetScreen()"><span><strong>予算</strong><small>月ごとの予算を確認・作成</small></span><span aria-hidden="true">›</span></button>
+      <button type="button" onclick="editKakeiboConnection()"><span><strong>kakeiboの接続設定</strong><small>このブラウザに保存した専用URLを変更</small></span><span aria-hidden="true">›</span></button>
+    </div>
+  </section>
 
   <div id="budgetScreen" class="screen hidden">
 
     <div class="trend-header-row">
-      <button class="back-button" onclick="showHomeScreen()">← ホーム</button>
-      <div class="screen-title trend-page-title">予算</div>
+      <button class="back-button" onclick="showOtherScreen()">← 戻る</button>
+      <h1 class="screen-title trend-page-title">予算</h1>
     </div>
 
     <div class="tabs budget-tabs">
@@ -182,8 +134,7 @@
   <div id="trendScreen" class="screen hidden">
 
     <div class="trend-header-row">
-      <button class="back-button" onclick="showHomeScreen()">← ホーム</button>
-      <div class="screen-title trend-page-title">月別推移</div>
+      <h1 class="screen-title trend-page-title">分析</h1>
     </div>
 
     <div class="tabs trend-tabs">
@@ -192,6 +143,11 @@
       <div class="trend-tab" data-trend-person="ぐんま" onclick="changeTrendPerson('ぐんま', this)">ぐん</div>
       <div class="trend-tab" data-trend-person="合計" onclick="changeTrendPerson('合計', this)">合計</div>
     </div>
+    <div class="analysis-tabs" role="tablist" aria-label="分析の表示">
+      <button type="button" role="tab" data-analysis-tab="trend" aria-selected="true" onclick="showAnalysisTab('trend')">推移</button>
+      <button type="button" role="tab" data-analysis-tab="ranking" aria-selected="false" onclick="showAnalysisTab('ranking')">ランキング</button>
+    </div>
+
 
     <div class="filter-condition-card">
 
@@ -207,6 +163,8 @@
       </div>
     </div>
 
+    <label class="trend-range-label" for="trendRange">表示期間 <select id="trendRange" onchange="changeTrendRange(this.value)"><option value="6">過去6か月</option><option value="12">過去12か月</option><option value="0">全期間</option></select></label>
+
     <div class="placeholder-card" id="trendChartCard">
       読み込み中...
     </div>
@@ -216,8 +174,7 @@
   <div id="balanceScreen" class="screen hidden">
 
     <div class="trend-header-row">
-      <button class="back-button" onclick="showHomeScreen()">← ホーム</button>
-      <div class="screen-title trend-page-title">収支</div>
+      <h1 class="screen-title trend-page-title">収支</h1>
     </div>
 
     <div class="tabs balance-tabs">
@@ -240,8 +197,7 @@
   <div id="rankingScreen" class="screen hidden">
 
     <div class="trend-header-row">
-      <button class="back-button" onclick="showHomeScreen()">← ホーム</button>
-      <div class="screen-title trend-page-title">ランキング</div>
+      <h1 class="screen-title trend-page-title">分析</h1>
     </div>
 
     <div class="tabs ranking-tabs">
@@ -250,6 +206,11 @@
       <div class="trend-tab" data-ranking-person="ぐんま" onclick="changeRankingPerson('ぐんま', this)">ぐん</div>
       <div class="trend-tab" data-ranking-person="合計" onclick="changeRankingPerson('合計', this)">合計</div>
     </div>
+    <div class="analysis-tabs" role="tablist" aria-label="分析の表示">
+      <button type="button" role="tab" data-analysis-tab="trend" aria-selected="false" onclick="showAnalysisTab('trend')">推移</button>
+      <button type="button" role="tab" data-analysis-tab="ranking" aria-selected="true" onclick="showAnalysisTab('ranking')">ランキング</button>
+    </div>
+
 
     <div id="rankingConditionCard" class="condition-summary-card" onclick="openRankingConditionSheet()">
 
@@ -273,8 +234,8 @@
   <div id="calendarScreen" class="screen hidden">
 
     <div class="trend-header-row">
-      <button class="back-button" onclick="showHomeScreen()">← ホーム</button>
-      <div class="screen-title trend-page-title">支出カレンダー</div>
+      <button class="back-button" onclick="returnFromCalendar()">← 戻る</button>
+      <h1 class="screen-title trend-page-title">支出カレンダー</h1>
     </div>
 
     <div class="tabs calendar-tabs">
@@ -314,8 +275,8 @@
   <div id="assetScreen" class="screen hidden">
 
     <div class="trend-header-row">
-      <button class="back-button" onclick="showHomeScreen()">← ホーム</button>
-      <div class="screen-title trend-page-title">財産目録</div>
+      <button class="back-button" onclick="showOtherScreen()">← 戻る</button>
+      <h1 class="screen-title trend-page-title">財産目録</h1>
     </div>
 
     <div class="tabs asset-tabs">
@@ -382,13 +343,19 @@
   <div class="sheet-modal" id="expenseModal" role="dialog" aria-label="支出明細">
     <div class="sheet-panel">
       <div class="sheet-header">
-        <div class="sheet-title"></div>
+        <div class="sheet-title">支出明細</div><button type="button" class="calendar-shortcut" onclick="openExpenseCalendar()" aria-label="この明細をカレンダーで見る"></button>
         <button class="sheet-close" aria-label="閉じる" onclick="closeExpenseList()">×</button>
       </div>
       <div id="expenseListContent">読み込み中...</div>
     </div>
   </div>
 
+  <nav class="bottom-nav" aria-label="メインナビゲーション">
+    <button type="button" data-nav="home" onclick="showHomeScreen()"><span data-nav-icon="home" aria-hidden="true"></span><span>ホーム</span></button>
+    <button type="button" data-nav="balance" data-prefetch="balance" onclick="showBalanceScreen()"><span data-nav-icon="balance" aria-hidden="true"></span><span>収支</span></button>
+    <button type="button" data-nav="analysis" data-prefetch="trend" onclick="showAnalysisTab('trend')"><span data-nav-icon="analysis" aria-hidden="true"></span><span>分析</span></button>
+    <button type="button" data-nav="other" onclick="showOtherScreen()"><span data-nav-icon="other" aria-hidden="true"></span><span>その他</span></button>
+  </nav>
   <script src="app.js"></script>
 </body>
 
