@@ -9,7 +9,7 @@ await page.route('https://script.google.com/**',async r=>{const {action,params}=
 if(action==='getViewerAccess')data={authorized:true};
 if(action==='getAllHomeData'){const item={monthBudgetCalculated:true,monthBudget:10000,monthBudgetRemaining:8000,monthBudgetRate:20,budgetStatus:'順調です',dailyTotal:2000,allTotal:3200,fixedMonthTotal:1000,monthlyMonthTotal:2000,specialMonthTotal:200,specialYearTotal:5000,yearBudget:20000,yearBudgetRemaining:15000,yearBudgetRate:25};data={homeData:{},monthBounds:{minYear:year-1,maxYear:year,minMonth:0,maxMonth:month}};for(let y=year-1;y<=year;y++)for(let m=0;m<12;m++)data.homeData[y+'-'+m]=Object.fromEntries(persons.map(p=>[p,item]));}
 if(action==='getCategoryFilterMaster')data={fixed:{categories:['家賃']},monthly:{categories:['食費']},yearly:{categories:['旅行']}};
-if(action==='getMonthlyTrendData'){const months=[];for(let i=7;i>=0;i--){const d=new Date(year,month-i,1);months.push({year:d.getFullYear(),month:d.getMonth(),label:(d.getMonth()+1)+'月',total:3200,fixed:1000,monthly:2000,yearly:200,monthBudget:10000+i*100,categories:{'家賃':1000,'食費':2000,'旅行':200}})}data=Object.fromEntries(persons.map(p=>[p,months]));}
+if(action==='getMonthlyTrendData'){const months=[];for(let i=7;i>=0;i--){const d=new Date(year,month-i,1);months.push({year:d.getFullYear(),month:d.getMonth(),label:(d.getMonth()+1)+'月',total:3200,fixed:1000,monthly:2000,yearly:200,monthBudget:10000+i*100,categories:{'家賃':1000,'食費':2000,'旅行':200}})}for(let i=1;i<=18;i++){const d=new Date(year,month+i,1);months.push({year:d.getFullYear(),month:d.getMonth(),label:(d.getMonth()+1)+'月',total:0,fixed:0,monthly:0,yearly:0,monthBudget:999999,categories:{}})}data=Object.fromEntries(persons.map(p=>[p,months]));}
 if(action==='getRankingData')data={all:Object.fromEntries(persons.map(p=>[p,[{year,month,amount:2000,category:'食費',date:'10/1',memo:'test',title:'test'}]])),currentYearNumber:year,currentMonthNumber:month};
 if(action==='getBalanceData')data=Object.fromEntries(persons.map(p=>[p,[{year,month,label:(month+1)+'月',income:10000,expense:3200,balance:6800}]]));
 if(action==='getMonthlyExpenseList')data={fixed:[{date:'10/1',category:'家賃',memo:'test',amount:1000}],monthly:[{date:'10/2',category:'食費',memo:'test',amount:2000}],yearly:[{date:'10/3',category:'旅行',memo:'test',amount:200}]};
@@ -22,6 +22,23 @@ await page.goto('https://etsuran.test/');await page.waitForFunction(()=>!documen
 assert.deepEqual(await page.locator('.bottom-nav button').allTextContents(),['ホーム','収支','分析','その他']);
 assert.equal(await page.locator('#homeScreen .menu-item').count(),0);
 assert.equal(await page.locator('#monthBudgetRemaining').innerText(),'8,000円');assert.equal(await page.locator('#yearBudgetRemaining').innerText(),'15,000円');
+assert.equal(await page.locator('#specialExpenseTotal').innerText(),'5,000円');
+assert.equal(await page.locator('#monthRemainingLabel').innerText(),'残り予算');
+assert.equal(await page.locator('#yearRemainingLabel').innerText(),'残り予算');
+assert.equal(await page.locator('#monthBudgetText').innerText(),'月予算 10,000円');
+assert.equal(await page.locator('#yearBudgetText').innerText(),'年予算 20,000円');
+const alignedBudgetColumns=()=>page.evaluate(()=>{
+  const x=id=>document.getElementById(id).getBoundingClientRect().left;
+  return Math.abs(x('dailyTotal')-x('specialExpenseTotal'))<1 && Math.abs(x('monthBudgetRemaining')-x('yearBudgetRemaining'))<1;
+});
+assert.equal(await alignedBudgetColumns(),true,'both budget cards use the same spending/remaining columns');
+await page.click('.special-card');
+assert.equal(await page.locator('#specialExpenseTotal').innerText(),'200円');
+assert.equal(await page.locator('#yearBudgetRemaining').innerText(),'15,000円','monthly view keeps annual remaining in the remaining column');
+assert.equal(await page.locator('#yearRemainingLabel').innerText(),'年間の残り予算');
+assert.equal(await alignedBudgetColumns(),true);
+await page.click('.special-card');
+
 assert.equal(await page.evaluate(()=>document.querySelector('#homeScreen .month-detail-actions').getBoundingClientRect().bottom <= document.querySelector('.bottom-nav').getBoundingClientRect().top),true,'home detail actions remain above the bottom navigation');
 await page.screenshot({path:'/workspace/work/new-home.png',fullPage:true});
 await page.click('#homeScreen .calendar-shortcut');await settle();
@@ -29,6 +46,9 @@ let last=requests.filter(r=>r.action==='getCalendarData').at(-1);assert.equal(la
 await page.click('#calendarScreen .back-button');assert.equal(await page.locator('#homeScreen').isVisible(),true);
 await page.click('[data-nav=analysis]');await settle();assert.equal(await page.locator('#trendScreen').isVisible(),true);assert.equal(await page.locator('.trend-real-column').count(),6);assert.equal(await page.locator('.analysis-value').innerText(),'2,200円');
 assert.equal(await page.locator('#trendCategoryFilterButton').innerText(),'日常費＋特別費');
+assert.deepEqual(await page.evaluate(()=>[selectedTrendYear,selectedTrendMonth]),[year,month],'initial selection is this month even when API includes future months');
+assert.equal(await page.evaluate(()=>getCurrentTrendData().every(r=>r.year*12+r.month<=new Date().getFullYear()*12+new Date().getMonth())),true,'future placeholders cannot replace recent history');
+
 assert.equal(await page.locator('.trend-budget-line').count(),0,'combined expenses do not use the daily-only budget scale');
 assert.match(await page.locator('#trendLegend').innerText(),/日常費 2,000円/);
 assert.match(await page.locator('#trendLegend').innerText(),/特別費 200円/);
@@ -37,6 +57,7 @@ for (const [width,height] of [[320,640],[360,640],[390,700],[390,844]]) {
   for (const nav of ['home','analysis']) {
     await page.click('[data-nav='+nav+']');await settle();
     if(nav==='home') await page.evaluate(()=>renderHomeData({monthBudgetCalculated:true,monthBudget:100000,monthBudgetRemaining:87655,monthBudgetRate:12,budgetStatus:'順調です',dailyTotal:12345,allTotal:987654,fixedMonthTotal:111111,monthlyMonthTotal:12345,specialMonthTotal:864198,specialYearTotal:111111,yearBudget:222222,yearBudgetRemaining:111111,yearBudgetRate:50}));
+    if(nav==='home') assert.equal(await alignedBudgetColumns(),true,'budget columns align at '+width+'px');
     assert.equal(await page.evaluate(nav=>{
       const screen=document.querySelector(nav==='home'?'#homeScreen':'#trendScreen');
       const footer=screen.querySelector('.month-detail-actions').getBoundingClientRect();
@@ -65,7 +86,7 @@ await page.setViewportSize({width:390,height:844});
 // Long histories remain contained, with the selected recent month visible.
 await page.evaluate(()=>{
   window.savedTrendRows=trendDataCache[currentTrendPerson];
-  const now=new Date(),sample=window.savedTrendRows.at(-1);
+  const now=new Date(),sample=getCurrentTrendData().at(-1);
   trendDataCache[currentTrendPerson]=Array.from({length:36},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-35+i,1);return {...sample,year:d.getFullYear(),month:d.getMonth(),label:(d.getMonth()+1)+'月'}});
 });
 await page.selectOption('#trendRange','0');

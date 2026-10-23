@@ -22,6 +22,8 @@ jobs:
           node --check < gas/Code.gs
           node tests/api.test.cjs
           node tests/auth.test.cjs
+          TZ=Asia/Tokyo node tests/trend-period.test.cjs
+          TZ=UTC node tests/trend-period.test.cjs
           TZ=Asia/Tokyo node tests/gas.test.cjs
           TZ=UTC node tests/gas.test.cjs
           TZ=Asia/Tokyo node tests/gas-ranking.test.cjs

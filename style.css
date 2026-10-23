@@ -1883,11 +1883,8 @@ button, input, select { font-family: inherit; }
 .hero.caution, .hero.warning, .hero.future { background: transparent; }
 .home-heading-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .hero .label, .mini-card .label { margin: 0; font-size: 13px; font-weight: 500; color: var(--app-ink); }
-.hero .budget-caption { margin: 8px 0 2px; font-size: 12px; color: var(--app-muted); }
-.hero .budget-value { font-size: clamp(28px, 8vw, 34px); font-weight: 500; letter-spacing: -.8px; line-height: 1.15; overflow-wrap: anywhere; }
 .hero.warning .budget-value { color: #b24b3b; }
 .hero .status { flex: 0 1 auto; max-width: 48%; margin: 0; padding: 5px 9px; border-radius: 20px; font-size: 11px; line-height: 1.5; text-align: right; }
-.home-spend-line { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; color: var(--app-muted); font-size: 12px; }
 .bar-line { margin-top: 8px; }
 .bar-bg { height: 4px; background: #e7ece6; }
 .bar { background: #6b9c79; }
@@ -1895,9 +1892,17 @@ button, input, select { font-family: inherit; }
 .mini-grid { display: block; margin: 0; }
 .mini-card { min-height: 0; padding: 12px 0; margin: 0; border-radius: 0; border-bottom: 1px solid var(--app-line); box-shadow: none; background: transparent; }
 .special-card.month-mode, .special-card, .total-card { background: transparent; }
-.special-remaining { display: flex; align-items: baseline; gap: 5px; font-size: 11px; color: var(--app-muted); }
-.special-remaining strong { color: var(--app-ink); font-size: clamp(19px, 5vw, 23px); font-weight: 500; letter-spacing: -.4px; }
-.special-card .sub { margin-top: 5px; font-size: 12px; }
+#homeScreen .hero, #homeScreen .special-card { padding: 10px 12px; margin: 0 0 8px; border: 1px solid var(--app-line); border-radius: 12px; background: #f5f8f4; }
+#homeScreen .special-card { background: #faf8f1; }
+#homeScreen .home-heading-row { min-height: 24px; }
+#homeScreen .home-budget-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 6px; }
+#homeScreen .home-budget-metrics .budget-caption { margin: 0 0 2px; font-size: 11px; color: var(--app-muted); }
+#homeScreen .home-budget-metrics .budget-value { font-size: clamp(20px, 5.6vw, 24px); font-weight: 500; letter-spacing: -.5px; line-height: 1.2; overflow-wrap: anywhere; }
+.home-budget-footer { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.home-budget-limit { flex: 0 0 auto; color: var(--app-muted); font-size: 11px; line-height: 16px; }
+.home-budget-footer .bar-line { flex: 1; min-width: 0; margin: 0; }
+.home-budget-footer .bar-bg { min-width: 24px; }
+.home-mode-hint { color: var(--app-muted); font-size: 10px; font-weight: 400; white-space: nowrap; }
 .special-card .bar { background: #dbb34e; }
 .special-card .danger { color: #b24b3b; }
 .total-card { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 10px 12px; }
@@ -1909,6 +1914,7 @@ button, input, select { font-family: inherit; }
 .breakdown-row { padding: 9px 0; margin: 0; border-bottom: 1px solid var(--app-line); font-size: 13px; color: var(--app-muted); }
 .breakdown-row:last-child { border-bottom: 0; padding-bottom: 0; }
 .month-detail-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 6px 0; }
+#homeScreen .month-detail-actions { margin-block: 4px; }
 .text-link { display: flex; align-items: center; justify-content: flex-start; gap: 14px; width: auto; padding: 8px 0; margin: 0; border: 0; background: transparent; color: var(--app-green); font-size: 13px; font-weight: 500; text-align: left; }
 .calendar-shortcut { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 10px; border: 1px solid var(--app-line); border-radius: 11px; color: var(--app-green); background: transparent; }
 .calendar-shortcut svg { width: 22px; height: 22px; }
@@ -1974,15 +1980,15 @@ button, input, select { font-family: inherit; }
   .header-actions .kakeiboLinkButton { font-size: 13px; padding-inline: 12px; }
   .special-card .home-heading-row { gap: 6px; }
   .special-card .label { font-size: 12px; }
-  .special-remaining strong { font-size: 19px; }
 }
 .trend-header-row .screen-title { flex: none; text-align: left; }
 @media (max-height: 720px) {
   body { padding-top: 6px; }
   .trend-header-row { margin-block: 0 6px; }
-  #homeScreen .month-switcher { margin-bottom: 4px; }
+  #homeScreen .month-switcher { margin-bottom: 0; }
   #homeScreen .hero { padding-bottom: 10px; }
   #homeScreen .mini-card { padding-block: 10px; }
+  #homeScreen .total-card { padding-block: 8px; }
   #balanceScreen .trend-header-row { min-height: 28px; }
   #balanceScreen .balance-summary-card { padding-block: 10px; }
   #balanceMonthlyTable { padding-block: 6px; margin-top: 4px; }

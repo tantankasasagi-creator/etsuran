@@ -503,7 +503,8 @@ document.getElementById('nextMonthButton').disabled = true;
 
       document.getElementById('yearRemainingLabel').textContent = '残り予算';
       document.getElementById('yearBudgetRemaining').textContent = '読み込み中...';
-      document.getElementById('specialYearTotal').textContent = '支出 読み込み中...';
+      document.getElementById('specialExpenseTotal').textContent = '読み込み中...';
+      document.getElementById('yearBudgetText').textContent = '年予算 読み込み中...';
 
       document.getElementById('yearBudgetRate').textContent = '--%消化';
 
@@ -521,7 +522,7 @@ document.getElementById('nextMonthButton').disabled = true;
         document.getElementById('monthBudgetRemaining').textContent = '—';
         document.getElementById('dailyTotal').textContent =
           formatMoney(data.dailyTotal);
-        document.getElementById('monthBudgetText').textContent = '今月予算 未計算';
+        document.getElementById('monthBudgetText').textContent = '月予算 未計算';
         document.getElementById('monthBudgetRate').textContent = '--%消化';
         setHeroStatus('');
         setStatus('予算メニューで予算を作成してください');
@@ -553,7 +554,7 @@ document.getElementById('nextMonthButton').disabled = true;
         formatMoney(data.dailyTotal);
 
       document.getElementById('monthBudgetText').textContent =
-        '今月予算 ' + formatMoney(data.monthBudget);
+        '月予算 ' + formatMoney(data.monthBudget);
 
       document.getElementById('monthBudgetRate').textContent =
         data.monthBudgetRate + '%消化';
@@ -578,32 +579,35 @@ document.getElementById('nextMonthButton').disabled = true;
   const title = document.getElementById('specialCardTitle');
   const label = document.getElementById('yearRemainingLabel');
   const value = document.getElementById('yearBudgetRemaining');
-  const status = document.getElementById('specialYearTotal');
+  const expense = document.getElementById('specialExpenseTotal');
+  const expenseLabel = document.getElementById('specialExpenseLabel');
+  const hint = document.getElementById('specialModeHint');
   const rate = document.getElementById('yearBudgetRate');
   const card = document.querySelector('.special-card');
 
   card.classList.remove('month-mode');
 
-  value.classList.remove('danger');
-  status.classList.remove('danger');
+  value.textContent = formatMoney(data.yearBudgetRemaining);
+  value.classList.toggle('danger', Number(data.yearBudgetRemaining) < 0);
+  document.getElementById('yearBudgetText').textContent = '年予算 ' + formatMoney(data.yearBudget);
 
   if (specialDisplayMode === 'month') {
     card.classList.add('month-mode');
-    title.textContent = '今月の特別費';
-    label.textContent = '支出';
-    value.textContent = formatMoney(data.specialMonthTotal);
-    status.textContent = '年予算残り ' + formatMoney(data.yearBudgetRemaining);
+    title.textContent = (selectedMonth + 1) + '月の特別費';
+    label.textContent = Number(data.yearBudgetRemaining) < 0 ? '年間の予算オーバー' : '年間の残り予算';
+    expenseLabel.textContent = '支出';
+    expense.textContent = formatMoney(data.specialMonthTotal);
+    hint.textContent = '年の支出に切替 ↔';
     rate.textContent = '年予算 ' + data.yearBudgetRate + '%消化';
     setYearBar('yearBudgetBar', data.yearBudgetRate);
     return;
   }
 
   title.textContent = selectedYear + '年の特別費';
-  label.textContent = Number(data.yearBudgetRemaining) < 0 ? '予算オーバー' : '残り';
-  value.textContent = formatMoney(data.yearBudgetRemaining);
-  value.classList.toggle('danger', Number(data.yearBudgetRemaining) < 0);
-
-  status.textContent = '支出 ' + formatMoney(data.specialYearTotal);
+  label.textContent = Number(data.yearBudgetRemaining) < 0 ? '予算オーバー' : '残り予算';
+  expenseLabel.textContent = '支出';
+  expense.textContent = formatMoney(data.specialYearTotal);
+  hint.textContent = '月の支出に切替 ↔';
 
   rate.textContent = data.yearBudgetRate + '%消化';
 
@@ -758,7 +762,14 @@ function getFilteredTrendData(data) {
 }
 
 function getCurrentTrendData() {
-  const data = getFilteredTrendData(trendDataCache[currentTrendPerson]);
+  // The API fills the whole source month range, including future placeholders.
+  // Choose the recent window from actual calendar history, not those placeholders.
+  const now = new Date();
+  const currentMonthKey = now.getFullYear() * 12 + now.getMonth();
+  const history = trendDataCache[currentTrendPerson]
+    .filter(item => Number(item.year) * 12 + Number(item.month) <= currentMonthKey)
+    .sort((a, b) => Number(a.year) * 12 + Number(a.month) - Number(b.year) * 12 - Number(b.month));
+  const data = getFilteredTrendData(history);
   return trendRange ? data.slice(-trendRange) : data;
 }
 
@@ -1097,7 +1108,16 @@ function renderSelectedPerson(person) {
     !homeDataCache[key] ||
     !homeDataCache[key][person]
   ) {
-    ['dailyTotal', 'monthBudgetRemaining', 'yearBudgetRemaining', 'allTotal'].forEach(id => { document.getElementById(id).textContent = '—'; });
+    ['dailyTotal', 'monthBudgetRemaining', 'specialExpenseTotal', 'yearBudgetRemaining', 'allTotal'].forEach(id => { document.getElementById(id).textContent = '—'; });
+    document.getElementById('monthBudgetText').textContent = '月予算 —';
+    document.getElementById('yearBudgetText').textContent = '年予算 —';
+    document.getElementById('monthRemainingLabel').textContent = '残り予算';
+    document.getElementById('yearRemainingLabel').textContent = specialDisplayMode === 'month' ? '年間の残り予算' : '残り予算';
+    document.getElementById('specialCardTitle').textContent = specialDisplayMode === 'month' ? (selectedMonth + 1) + '月の特別費' : selectedYear + '年の特別費';
+    document.getElementById('monthBudgetRate').textContent = '--%消化';
+    document.getElementById('yearBudgetRate').textContent = '--%消化';
+    setBar('monthBudgetBar', 0);
+    setYearBar('yearBudgetBar', 0);
     document.getElementById('budgetStatus').textContent = 'この月のデータはありません';
     document.getElementById('monthlyBreakdown').textContent = '';
     return;
