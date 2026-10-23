@@ -1989,7 +1989,6 @@ button, input, select { font-family: inherit; }
   #homeScreen .hero { padding-bottom: 10px; }
   #homeScreen .mini-card { padding-block: 10px; }
   #homeScreen .total-card { padding-block: 8px; }
-  #balanceScreen .trend-header-row { min-height: 28px; }
   #balanceScreen .balance-summary-card { padding-block: 10px; }
   #balanceMonthlyTable { padding-block: 6px; margin-top: 4px; }
 }
